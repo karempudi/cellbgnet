@@ -127,7 +127,7 @@ def train_model(param_file: str, device_overwrite: str=None, debug: bool=False,
 
     if sys.platform in ('linux', 'darwin'):
         os.nice(param.Hardware.unix_niceness)
-    elif parma.Hardware.unix_niceness is not None:
+    elif param.Hardware.unix_niceness is not None:
         print(f"Cannot set niceness on platform {sys.platform}. You probably do not need to worry.")
         print(f"You are probably on windows .... ")
     

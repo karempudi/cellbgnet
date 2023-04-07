@@ -1,5 +1,28 @@
 
 
+Simulation:
+
+
+Network:
+  n_filters: 48
+  padding: 1
+  kernel_size: 3
+  sig_pred: True
+  psf_pred: False
+  local_context: False # This will just use 1 frame for context 
+  use_coordconv: False # Use if you want to add cell-bg coordinate on top
+  
+
+Train:
+
+
+PSF:
+
+Evaluation:
+
+
+
+
 Hardware:
   device: cuda:0
   device_simulation: cuda:0
