@@ -1,22 +1,29 @@
 
 
 Simulation:
+  train_size: 128 # size of the images network sees
 
 
 Network:
   n_filters: 48
+  n_stages: 2
   padding: 1
   kernel_size: 3
   sig_pred: True
   psf_pred: False
-  local_context: False # This will just use 1 frame for context 
+  local_context: False # This will just use 1 frame for context, always False for our use-case
   use_coordconv: False # Use if you want to add cell-bg coordinate on top
-  
+
 
 Train:
+  lr: 
+  w_decay:
+  lr_decay:
+  step_size: 1000 # lr decay step size
 
 
 PSF:
+  psf_size: 31
 
 Evaluation:
 

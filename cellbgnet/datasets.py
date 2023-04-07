@@ -1,7 +1,6 @@
 import time
-
 import torch
-from torch.utils.data import Dataset
+import matplotlib.pyplot as plt
 
 from cellbgnet.generic import emitter
 
@@ -185,3 +184,15 @@ class SMLMTrainDataset(SMLMDataset):
         frames, target, weight, tar_emitter = self._process_sample(frames, tar_emitter, bg_frame)
 
         return self._return_sample(frames, target, weight, tar_emitter)
+
+
+class DataSimulator():
+
+    def __init__(self, psf_params, simulation_params):
+        self.psf_params = psf_params
+        self.psf_size = self.psf_params['psf_size']
+        self.simulation_params = simulation_params
+    
+
+    def simulate_data(self):
+        pass
