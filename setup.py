@@ -30,5 +30,5 @@ setup(
     license='MIT',
     author='Praneeth Karempudi',
     author_email='praneeth.karempudi@gmail.com',
-    description=''
+    description='CELLBGNET'
 )
