@@ -4,7 +4,55 @@ import torch
 
 class TrainFuncs:
 
+    def training(self, train_size, simulation_params)
+    """
+    Function that generates training data and drives the network training one step/batch
+
+    Arguments:
+        train_size (int): size of the image that the network sees
+    
+        simulation_params (dict): parameters to simulate, has all the options to do different kinds of simulation
+
+    Returns:
+        loss (float): total loss for a batch
+    """
+    # probability map describing probability of a spot
+    if not simulation_params['use_cell_bg']:
+        prob_map = np.zeros([1, train_size, train_size])
+        # remove the the margins
+        prob_map[0, int(simulation_params['margin_empty'] * train_size):
+            int((1 - simulation_params['margin_empty']) * train_size),
+             int(simulation_params['margin_empty'] * train_size):
+             int((1 - simulation_params['margin_empty']) * train_size)] += 1
+        prob_map = prob_map / prob_map.sum() * density
+
+        imgs_sim, xyzi_gt, s_mask, bg, locs = self.data_generator.simulate_data(
+            
+        )
+
+    else:
+        pass
+
     pass
+
+    def look_trainingdata(self):
+        simulation_params = self.data_generator.simulation_params
+        train_size = simulation_params['train_size']
+        density = simulation_params['density']
+
+        if not simulation_params['use_cell_bg']:
+            prob_map = np.zeros([1, train_size, train_size])
+            # remove the the margins
+            prob_map[0, int(simulation_params['margin_empty'] * train_size):
+                int((1 - simulation_params['margin_empty']) * train_size),
+                int(simulation_params['margin_empty'] * train_size):
+                int((1 - simulation_params['margin_empty']) * train_size)] += 1
+            prob_map = prob_map / prob_map.sum() * density
+        else:
+            prob_map = None
+        
+
+
 
 class LossFuncs:
 
@@ -80,4 +128,54 @@ class LossFuncs:
 
 class InferFuncs:
 
-    pass
+    def inferring(self, X, cell_bg_coord):
+        """
+        Main function for inferring process
+
+        Arguments:
+        ------------
+            X:  input image could be 4 or 3 dim
+
+            cell_bg_coord: cell bg coordinates that you make for the images
+        """
+
+        img_h, img_w = X.shape[-2], X.shape[-1]
+
+        # simple normalizatoin
+        scaled_x = (X - self.net_params['offset']) / self.net_params['factor']
+
+        if X.ndimension() == 3: # at test time
+            scaled_x = scaled_x[:, None]
+            fm_out = self.frame_module(scaled_x, cell_bg_coord)
+            if self.local_context:
+                zeros = torhc.zeros_like(fm_out[:1])
+                h_t0 = fm_out
+                h_tm1 = torch.cat([zeros, fm_out], 0)[:-1]
+                h_tp1 = torch.cat([fm_out, zeros], 0)[1:]
+                fm_out = torch.cat([h_tm1, h_t0, h_tp1], 1)
+        elif X.ndimension() == 4: # at train time we will have this
+            fm_out = self.frame_module(scaled_x.reshape([-1, 1, img_h, img_w]), cell_bg_coord).reshape(-1, self.n_filters * self.n_inp, img_h, img_w)
+        
+        # layer norm
+
+        fm_out_LN = nn.functional.layer_norm(fm_out, normalized_shape=[self.n_filters * self.n_inp, img_h, img_w])
+        cm_in = fm_out_LN
+
+        cm_out = self.context_module(cm_in, cell_bg_coord)
+        outputs = self.out_module.forward(cm_out, cell_bg_coord)
+
+        if self.sig_pred:
+            xyzi_sig = torch.sigmoid(outputs['xyzi_sig']) + 0.001
+        else:
+            xyzi_sig = 0.2 * torch.ones_like(outputs['xyzi'])
+
+        probs = torch.sigmoid(torch.clamp(outputs['p'], -16., 16.))
+
+        xyzi_est = outputs['xyzi']
+        xyzi_est[:, :2] = torch.tanh(xyzi_est[:, :2])  # xy
+        xyzi_est[:, 2] = torch.tanh(xyzi_est[:, 2])  # z
+        xyzi_est[:, 3] = torch.sigmoid(xyzi_est[:, 3])  # ph
+        psf_est = torch.sigmoid(outputs['bg'])[:, 0] if self.psf_pred else None
+
+        return probs[:, 0], xyzi_est, xyzi_sig, psf_est
+

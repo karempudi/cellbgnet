@@ -1,7 +1,18 @@
 from typing import Tuple, Union
 
 import torch
+import numpy as np
 
+def gpu(x, device):
+    # send a numpy array or torch tensor on gpu
+    if isinstance(x, np.ndarray):
+        return torch.cuda.FloatTensor(x.astype('float32'))
+    else:
+        return torch.cuda.FloatTensor(x)
+
+def cpu(x):
+    # make any tensor a numpy array
+    return x.cpu().detach().numpy()
 
 def _specific_device_by_str(device) -> Tuple[str, str]:
     """Converts torch compatible device string to device name and device index"""
