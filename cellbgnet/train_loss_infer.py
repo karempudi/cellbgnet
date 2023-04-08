@@ -4,36 +4,37 @@ import torch
 
 class TrainFuncs:
 
-    def training(self, train_size, simulation_params)
-    """
-    Function that generates training data and drives the network training one step/batch
+    def training(self, train_size, simulation_params):
+        """
+        Function that generates training data and drives the network training one step/batch
 
-    Arguments:
-        train_size (int): size of the image that the network sees
-    
-        simulation_params (dict): parameters to simulate, has all the options to do different kinds of simulation
+        Arguments:
+            train_size (int): size of the image that the network sees
+        
+            simulation_params (dict): parameters to simulate, has all the options to do different kinds of simulation
 
-    Returns:
-        loss (float): total loss for a batch
-    """
-    # probability map describing probability of a spot
-    if not simulation_params['use_cell_bg']:
-        prob_map = np.zeros([1, train_size, train_size])
-        # remove the the margins
-        prob_map[0, int(simulation_params['margin_empty'] * train_size):
-            int((1 - simulation_params['margin_empty']) * train_size),
-             int(simulation_params['margin_empty'] * train_size):
-             int((1 - simulation_params['margin_empty']) * train_size)] += 1
-        prob_map = prob_map / prob_map.sum() * density
+        Returns:
+            loss (float): total loss for a batch
+        """
+        density = simulation_params['density']
+        # probability map describing probability of a spot
+        if not simulation_params['use_cell_bg']:
+            prob_map = np.zeros([1, train_size, train_size])
+            # remove the the margins
+            prob_map[0, int(simulation_params['margin_empty'] * train_size):
+                int((1 - simulation_params['margin_empty']) * train_size),
+                int(simulation_params['margin_empty'] * train_size):
+                int((1 - simulation_params['margin_empty']) * train_size)] += 1
+            prob_map = prob_map / prob_map.sum() * density
 
-        imgs_sim, xyzi_gt, s_mask, bg, locs = self.data_generator.simulate_data(
-            
-        )
+            imgs_sim, xyzi_gt, s_mask, bg, locs = self.data_generator.simulate_data(
+                
+            )
 
-    else:
+        else:
+            pass
+
         pass
-
-    pass
 
     def look_trainingdata(self):
         simulation_params = self.data_generator.simulation_params

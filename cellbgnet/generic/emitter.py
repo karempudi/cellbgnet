@@ -234,7 +234,7 @@ class EmitterSet:
         Args:
             file: path where to save
         """
-        from decode.utils import emitter_io
+        from cellbgnet.utils import emitter_io
 
         if not isinstance(file, Path):
             file = Path(file)
@@ -257,7 +257,7 @@ class EmitterSet:
         Returns:
             EmitterSet
         """
-        from decode.utils import emitter_io
+        from cellbgnet.utils import emitter_io
 
         file = Path(file) if not isinstance(file, Path) else file
 
@@ -267,7 +267,7 @@ class EmitterSet:
             em_dict, meta, _ = emitter_io.load_h5(file)
         elif file.suffix == '.csv':
             warnings.warn("For .csv files, implicit usage of .load() is discouraged. "
-                          "Please use 'decode.utils.emitter_io.load_csv' explicitly.")
+                          "Please use 'cellbgnet.utils.emitter_io.load_csv' explicitly.")
             em_dict, meta, _ = emitter_io.load_csv(file)
         else:
             raise ValueError
@@ -915,7 +915,7 @@ class LooseEmitterSet:
         id_ = id_.repeat_interleave(frame_dur_full_clean + 1, dim=0)
         # because 0 is first occurence
         frame_ix_ = frame_start_full.repeat_interleave(frame_dur_full_clean + 1, dim=0) \
-                    + decode.generic.utils.cum_count_per_group(id_) + 1
+                    + cellbgnet.generic.utils.cum_count_per_group(id_) + 1
 
         """First frame"""
         # first

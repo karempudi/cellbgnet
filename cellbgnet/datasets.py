@@ -1,5 +1,6 @@
 import time
 import torch
+from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -309,13 +310,13 @@ class DataSimulator():
         if self.use_gpu:
             imgs_sim = torch.zeros([batch_size, 3, prob_map.shape[1], prob_map.shape[2]]).type(torch.cuda.FloatTensor) \
                 if local_context else torch.zeros([batch_size, 1, prob_map.shape[1], prob_map.shape[2]]).type(torch.cuda.FloatTensor)
-            xyzi_gt = torhc.zeros([batch_size, 0, 4]).type(torch.cuda.FloatTensor)
+            xyzi_gt = torch.zeros([batch_size, 0, 4]).type(torch.cuda.FloatTensor)
             s_mask = torch.zeros([batch_size, 0]).type(torch.cuda.FloatTensor)
             pix_cor = torch.zeros([batch_size, 0, 2]).type(torch.cuda.FloatTensor)
         else:
             imgs_sim = torch.zeros([batch_size, 3, prob_map.shape[1], prob_map.shape[2]]).type(torch.FloatTensor) \
                 if local_context else torch.zeros([batch_size, 1, prob_map.shape[1], prob_map.shape[2]]).type(torch.FloatTensor)
-            xyzi_gt = torhc.zeros([batch_size, 0, 4]).type(torch.FloatTensor)
+            xyzi_gt = torch.zeros([batch_size, 0, 4]).type(torch.FloatTensor)
             s_mask = torch.zeros([batch_size, 0]).type(torch.FloatTensor)
             pix_cor = torch.zeros([batch_size, 0, 2]).type(torch.FloatTensor)
 
