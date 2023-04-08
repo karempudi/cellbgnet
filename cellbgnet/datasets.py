@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from cellbgnet.generic import emitter
+from cellbgnet.simulation.psf_kernel import SMAPSplineCoefficient
 
 class SMLMDataset(Dataset):
     """
@@ -201,6 +202,7 @@ class DataSimulator():
             self.use_gpu = False
 
         # initialize cubic spline psf
+        self.psf = SMAPSplineCoefficient() 
 
     def look_psfs(self):
         pass

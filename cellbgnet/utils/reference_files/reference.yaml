@@ -37,6 +37,7 @@ Train:
 
 
 PSF:
+  calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal.mat'
   psf_size: 31
   photon_scale: 7000 # i guess max numbeor of photons
   z_scale: 700

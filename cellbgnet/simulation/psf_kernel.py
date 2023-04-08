@@ -9,6 +9,9 @@ import torch
 
 from cellbgnet.generic import slicing as gutil
 import cellbgnet.generic.utils
+import cellbgnet.utils
+import scipy.io as sio
+import pickle
 
 class PSF(ABC):
     """
@@ -150,7 +153,7 @@ class CubicSplinePSF(PSF):
 
         self.ref_re = self._shift_ref(ref_re, roi_auto_center)
 
-        self._device, self._device_ix = decode.utils.hardware._specific_device_by_str(device)
+        self._device, self._device_ix = cellbgnet.utils.hardware._specific_device_by_str(device)
         self.max_roi_chunk = max_roi_chunk
 
         self._init_spline_impl()
@@ -533,3 +536,35 @@ class CubicSplinePSF(PSF):
 
         frames = torch.from_numpy(frames).reshape(n_frames, *self.img_shape)
         return frames
+
+
+class SMAPSplineCoefficient:
+    """Wrapper class as an interface for MATLAB Spline calibration data."""
+    def __init__(self, calib_file):
+        """
+        Loads a calibration file from SMAP and the relevant meta information
+        Args:
+            file:
+        """
+        self.calib_file = calib_file
+        self.calib_mat = sio.loadmat(self.calib_file, struct_as_record=False, squeeze_me=True)['SXY']
+
+        self.coeff = torch.from_numpy(self.calib_mat.cspline.coeff)
+        self.ref0 = (self.calib_mat.cspline.x0 - 1, self.calib_mat.cspline.x0 - 1, self.calib_mat.cspline.z0)
+        self.dz = self.calib_mat.cspline.dz
+        self.spline_roi_shape = self.coeff.shape[:3]
+
+    def init_spline(self, xextent, yextent, img_shape, device='cuda:0' if torch.cuda.is_available() else 'cpu', **kwargs):
+        """
+        Initializes the CubicSpline function
+        Args:
+            xextent:
+            yextent:
+            img_shape:
+            device: on which device to simulate
+        Returns:
+        """
+        psf = CubicSplinePSF(xextent=xextent, yextent=yextent, img_shape=img_shape, ref0=self.ref0,
+                                        coeff=self.coeff, vx_size=(1., 1., self.dz), device=device, **kwargs)
+
+        return psf
