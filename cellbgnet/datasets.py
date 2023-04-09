@@ -4,8 +4,10 @@ from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
 import numpy as np
 
-from cellbgnet.generic import emitter
+from cellbgnet.generic.emitter import EmitterSet
 from cellbgnet.simulation.psf_kernel import SMAPSplineCoefficient
+from cellbgnet.simulation.perlin_noise import PerlinNoiseFactory
+from cellbgnet.utils.hardware import cpu, gpu
 
 class SMLMDataset(Dataset):
     """
@@ -197,13 +199,20 @@ class DataSimulator():
         self.simulation_params = simulation_params
         self.hardware_params = hardware_params
         self.device = hardware_params.device_simulation
+        self.img_size = self.simulation_params['train_size']
         if self.device[:4] == 'cuda':
             self.use_gpu = True
         else:
             self.use_gpu = False
 
         # initialize cubic spline psf
-        self.psf = SMAPSplineCoefficient() 
+        self.psf = SMAPSplineCoefficient(self.psf_params['calib_file']).init_spline(
+            xextent=[-0.5, self.img_size-0.5],
+            yextent=[-0.5, self.img_size-0.5],
+            img_shape=[self.img_size, self.img_size],
+            device=self.device,
+            roi_size=None, roi_auto_center=None
+        )
 
     def look_psfs(self):
         pass
@@ -213,10 +222,97 @@ class DataSimulator():
 
     def simulate_psfs(self, S, X_os, Y_os, Z, I, robust_training=False):
         batch_size, n_inp, h, w = S.shape[0], S.shape[1], S.shape[2], S.shape[3]
+        xyzi = torch.cat([X_os.reshape([-1, 1, h, w]), Y_os.reshape([-1, 1, h, w]), Z.reshape([-1, 1, h, w]),
+                          I.reshape([-1, 1, h, w])], 1)
+    
+        n_samples = S.shape[0] // xyzi.shape[0]
+        XYZI_rep = XYZI.repeat_interleave(n_samples, 0)
 
+        s_inds = tuple(S.nonzero().transpose(1, 0))
+        x_os_vals = (XYZI_rep[:, 0][s_inds])[:, None, None]
+        y_os_vals = (XYZI_rep[:, 1][s_inds])[:, None, None]
+        # z_vals will be between -1 and 1, so they will be scaled to nm's here
+        z_vals = self.psf_params['z_scale'] * (XYZI_rep[:, 2][s_inds])[:, None, None]
+        i_vals = self.psf_params['photon_scale'] * (XYZI_rep[:, 3][s_inds])[:, None, None]
 
-    def simulate_noise(self):
-        pass
+        n_emitters = len(s_inds[0])
+        xyz = torch.zeros((n_emitters, 3))
+        xyz[:, 0] = s_inds[1] - x_os_vals[:, 0, 0]
+        xyz[:, 1] = s_inds[2] - y_os_vals[:, 0, 0]
+        xyz[:, 2] = z_vals[:, 0, 0]
+        photon_counts = i_vals[:, 0, 0]
+        frame_ix = s_inds[0]
+
+        em = EmitterSet(xyz=xyz, phot=photon_counts, frame_ix=frame_ix.long(), 
+                        id=torch.arange(n_emitters).long(), xy_unit='px',
+                        px_size=self.psf_params['pixel_size_xy'])
+
+        imgs_sim =  self.psf.forward(em.xyz_px, em.phot, em.frame_ix, ix_low=0, ix_high=batch_size)
+
+        torch.clamp_min_(imgs_sim, 0)
+        imgs_sim = imgs_sim.reshape([batch_size, n_inp, h, w])
+
+        return imgs_sim
+
+    def simulate_noise(self, imgs_sim, add_noise=True):
+        
+        if self.simulation_params['camera'] == 'sCMOS':
+
+            bg_photons = ((self.simulation_params['bg_values'] - self.simulation_params['baseline']) * self.simulation_params['e_per_adu']) / self.simulation_params['qe']
+
+            if bg_photons < 0:
+                print('Converted bg_photons is less than 0, please check parameters, bg_values and baseline')
+
+            if self.simulation_params['perlin_noise']:
+                size_x, size_y = imgs_sim.shape[-2], imgs_sim.shape[-1]
+                self.PN_res = self.simulation_params['perlin_noise_res']
+                self.PN_octaves_num = 1
+                space_range_x = size_x / self.PN_res
+                space_range_y = size_y / self.PN_res
+
+                # initialize noise factory
+                self.PN = PerlinNoiseFactory(dimension=2, octaves=self.PN_octaves_num,
+                                        tile=(space_range_x, space_range_y),
+                                        unbias=True)
+
+                PN_tmp_map = np.zeros([size_x, size_y])
+                for x in range(size_x):
+                    for y in range(size_y):
+                        cal_PN_tmp = self.PN(x / self.PN_res, y / self.PN_res)
+                        PN_tmp_map[x, y] = cal_PN_tmp
+
+                # you have pattern and you multiply by photons and a factors
+                PN_noise = PN_tmp_map * bg_photons * self.simulation_params['perlin_noise_factor']
+                # add perlin noise on top of already calculated bg_photons
+                bg_photons += PN_noise
+                if self.use_gpu:
+                    bg_photons = gpu(bg_photons)
+
+            # add bg_photons on top of psf simulated images
+            imgs_sim += bg_photons 
+
+            if add_noise:
+                imgs_sim = torch.distributions.Poisson(
+                    imgs_sim * self.simulation_params['qe']  + self.simulation_params['spurious_c']).sample()
+                
+                if type(self.simulation_params['sig_read']) == np.ndarray:
+                    print("CMOS camera variance map needed ... option not added yet")
+                else:
+                    # read noise
+                    RN = self.simulation_params['sig_read']
+
+                zeros = torch.zeros_like(imgs_sim)
+                readout_noise = torch.distributions.Normal(zeros, zeros + RN).sample()
+
+                # add read out noise
+                imgs_sim = imgs_sim + readout_noise
+                # convert off the electrons into ADU's and then 
+                imgs_sim = torch.clamp((imgs_sim / self.simulation_params['e_per_adu']) + self.simulation_params['baseline'], min=0) 
+
+        else:
+            print('Wrong camera type. Only sCMOS is implemented!!')
+
+        return imgs_sim
     
     def sampling(self, prob_map, batch_size=1, local_context=False, iter_num=None, train_size=128):
         """
@@ -301,7 +397,7 @@ class DataSimulator():
 
         Returns:
         ---------
-            imgs_sim:
+            imgs_sim: simulated image with PSFs 
             xyzi_gt:
             s_mask:
             psf_imgs_gt:
@@ -328,13 +424,65 @@ class DataSimulator():
         # if there are emitters sampled on the image
         if S.sum():
             imgs_sim += self.simulate_psfs(S, X_os, Y_os, Z, I, robust_training=robust_training)
+            xyzi = torch.cat([X_os[:, :, None], Y_os[:, :, None], Z[:, :, None], I[:, :, None]], 2)
+
+            S = S[:, 1] if local_context else S[:, 0]
+
+            if S.sum():
+                # if simulate the local context, take the middle frame otherwise the first one
+                xyzi = xyzi[:, 1] if local_context else xyzi[:, 0]
+                # get all molecules' discrete pixel positions [number_in_batch, row, column]
+                s_inds = tuple(S.nonzero().transpose(1, 0))
+                # get these molecules' sub-pixel xy offsets, z positions and photons
+                xyzi_true = xyzi[s_inds[0], :, s_inds[1], s_inds[2]]
+                # get the xy continuous pixel positions
+                if self.use_gpu:
+                    xyzi_true[:, 0] += s_inds[2].type(torch.cuda.FloatTensor) + 0.5
+                    xyzi_true[:, 1] += s_inds[1].type(torch.cuda.FloatTensor) + 0.5
+                else:
+                    xyzi_true[:, 0] += s_inds[2].type(torch.FloatTensor) + 0.5
+                    xyzi_true[:, 1] += s_inds[1].type(torch.FloatTensor) + 0.5
+                # return the gt numbers of molecules on each training images of this batch
+                # (if local_context, return the number of molecules on the middle frame)
+                s_counts = torch.unique_consecutive(s_inds[0], return_counts=True)[1]
+                s_max = s_counts.max()
+                # for each training images of this batch, build a molecule list with length=s_max
+                if self.use_gpu:
+                    xyzi_gt_curr = torch.cuda.FloatTensor(batch_size, s_max, 4).fill_(0)
+                    s_mask_curr = torch.cuda.FloatTensor(batch_size, s_max).fill_(0)
+                    pix_cor_curr = torch.cuda.LongTensor(batch_size, s_max, 2).fill_(0)
+                else:
+                    xyzi_gt_curr = torch.FloatTensor(batch_size, s_max, 4).fill_(0)
+                    s_mask_curr = torch.FloatTensor(batch_size, s_max).fill_(0)
+                    pix_cor_curr = torch.LongTensor(batch_size, s_max, 2).fill_(0)
+                    
+                s_arr = torch.cat([torch.arange(c) for c in s_counts], dim=0)
+                # put the gt in the molecule list, with remaining=0
+                xyzi_gt_curr[s_inds[0], s_arr] = xyzi_true
+                s_mask_curr[s_inds[0], s_arr] = 1
+                pix_cor_curr[s_inds[0], s_arr, 0] = s_inds[1].clone().detach()
+                pix_cor_curr[s_inds[0], s_arr, 1] = s_inds[2].clone().detach()
+
+                xyzi_gt = torch.cat([xyzi_gt, xyzi_gt_curr], 1)
+                s_mask = torch.cat([s_mask, s_mask_curr], 1)
+                pix_cor = torch.cat([pix_cor, pix_cor_curr], 1)
+            
 
         # add noise, bg is actually the normalized un-noised PSF image
+        # not sure why we are multiplying by 10
+        psf_imgs_gt = imgs_sim.clone() / self.psf_params['photon_scale'] * 10
+        psf_imgs_gt = psf_imgs_gt[:, 1] if local_context else psf_imgs_gt[:, 0]
+
+        imgs_sim = self.simulate_noise(imgs_sim)
 
         # only return the ground truth if photon > threshold
         if photon_filter:
-            pass
-
+            for i in range(xyzi_gt.shape[0]):
+                for j in range(xyzi_gt.shape[1]):
+                    if xyzi_gt[i, j, 3] * self.psf_params['photon_scale'] < photon_filter_threshold:
+                        xyzi_gt[i, j] = torch.tensor([0, 0, 0, 0])
+                        s_mask[i, j] = 0
+                        S[i, int(pix_cor[i, j][0]), int(pix_cor[i, j][1])] = 0
         locs = S if P_locs_cse else None
 
-        return None 
+        return imgs_sim, xyzi_gt, s_mask, psf_imgs_gt, locs

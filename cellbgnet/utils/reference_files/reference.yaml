@@ -10,6 +10,16 @@ Simulation:
     - 1
   survival_prob: # only used if there is local context, so in our case it is not used
   min_photon: 0.428 # intensity distributions sampled from (min_ph, 1)
+  camera: 'sCMOS'
+  perlin_noise: True
+  perlin_noise_factor: 0.2 # what fraction of bg photons you want to multiply to get PN noise map
+  perlin_noise_res: 64
+  baseline: 100
+  bg_values: 110
+  e_per_adu: 1 # e per adu of the camera
+  qe: 1 # quantum efficiency
+  spurious_c: 0.000 # not sure what this is
+  sig_read: 0.001 # sigma of the read noise
 
 
 Network:
@@ -37,10 +47,10 @@ Train:
 
 
 PSF:
-  calib_file: '/home/pk/Documents/SMLAT/data/bead_3dcal.mat'
-  psf_size: 31
+  calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splinesbead_3dcal.mat'
+  psf_size: 41 # kinda irrelevant for spline model psf
   photon_scale: 7000 # i guess max numbeor of photons
-  z_scale: 700
+  z_scale: 500 # what range of values you want to have z emitters in 
   pixel_size_xy:
     - 65
     - 65

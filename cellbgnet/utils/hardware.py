@@ -3,7 +3,7 @@ from typing import Tuple, Union
 import torch
 import numpy as np
 
-def gpu(x, device):
+def gpu(x):
     # send a numpy array or torch tensor on gpu
     if isinstance(x, np.ndarray):
         return torch.cuda.FloatTensor(x.astype('float32'))
