@@ -198,7 +198,7 @@ class DataSimulator():
         self.psf_size = self.psf_params['psf_size']
         self.simulation_params = simulation_params
         self.hardware_params = hardware_params
-        self.device = hardware_params.device_simulation
+        self.device = hardware_params['device_simulation']
         self.img_size = self.simulation_params['train_size']
         if self.device[:4] == 'cuda':
             self.use_gpu = True
@@ -214,21 +214,23 @@ class DataSimulator():
             roi_size=None, roi_auto_center=None
         )
 
-    def look_psfs(self):
+    def look_batch(self):
+        imgs_sim, xyzi_gt, s_mask, psf_imgs_gt, locs = self.sampling()
         pass
 
-    def place_psfs(self):
-        pass
 
     def simulate_psfs(self, S, X_os, Y_os, Z, I, robust_training=False):
         batch_size, n_inp, h, w = S.shape[0], S.shape[1], S.shape[2], S.shape[3]
         xyzi = torch.cat([X_os.reshape([-1, 1, h, w]), Y_os.reshape([-1, 1, h, w]), Z.reshape([-1, 1, h, w]),
                           I.reshape([-1, 1, h, w])], 1)
     
+        S = S.reshape([-1, h, w])
         n_samples = S.shape[0] // xyzi.shape[0]
-        XYZI_rep = XYZI.repeat_interleave(n_samples, 0)
+        XYZI_rep = xyzi.repeat_interleave(n_samples, 0)
 
+        #print(XYZI_rep.shape)
         s_inds = tuple(S.nonzero().transpose(1, 0))
+        #print(s_inds)
         x_os_vals = (XYZI_rep[:, 0][s_inds])[:, None, None]
         y_os_vals = (XYZI_rep[:, 1][s_inds])[:, None, None]
         # z_vals will be between -1 and 1, so they will be scaled to nm's here
@@ -243,16 +245,18 @@ class DataSimulator():
         photon_counts = i_vals[:, 0, 0]
         frame_ix = s_inds[0]
 
-        em = EmitterSet(xyz=xyz, phot=photon_counts, frame_ix=frame_ix.long(), 
+        em = EmitterSet(xyz=xyz, phot=photon_counts.cpu(), frame_ix=frame_ix.long().cpu(), 
                         id=torch.arange(n_emitters).long(), xy_unit='px',
                         px_size=self.psf_params['pixel_size_xy'])
+        
 
-        imgs_sim =  self.psf.forward(em.xyz_px, em.phot, em.frame_ix, ix_low=0, ix_high=batch_size)
+        imgs_sim =  self.psf.forward(em.xyz_px, em.phot, em.frame_ix, ix_low=0, ix_high=batch_size-1)
 
         torch.clamp_min_(imgs_sim, 0)
+        #print(imgs_sim.shape)
         imgs_sim = imgs_sim.reshape([batch_size, n_inp, h, w])
 
-        return imgs_sim
+        return imgs_sim.to(self.device)
 
     def simulate_noise(self, imgs_sim, add_noise=True):
         
@@ -469,8 +473,9 @@ class DataSimulator():
             
 
         # add noise, bg is actually the normalized un-noised PSF image
-        # not sure why we are multiplying by 10
+        # not sure why we are multiplying by 10 TODO
         psf_imgs_gt = imgs_sim.clone() / self.psf_params['photon_scale'] * 10
+        #psf_imgs_gt = imgs_sim.clone()
         psf_imgs_gt = psf_imgs_gt[:, 1] if local_context else psf_imgs_gt[:, 0]
 
         imgs_sim = self.simulate_noise(imgs_sim)
