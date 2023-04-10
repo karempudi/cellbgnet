@@ -191,7 +191,7 @@ class SMLMTrainDataset(SMLMDataset):
         return self._return_sample(frames, target, weight, tar_emitter)
 
 
-class DataSimulator():
+class DataSimulator(object):
 
     def __init__(self, psf_params, simulation_params, hardware_params):
         self.psf_params = psf_params

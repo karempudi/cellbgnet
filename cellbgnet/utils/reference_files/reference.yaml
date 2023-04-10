@@ -3,7 +3,7 @@
 Simulation:
   train_size: 128 # size of the images network see
   use_cell_bg: False
-  density: 
+  density: 4 
   margin_empty: 0.05 # what percent of the image you want to leave empty on the image
   z_prior:
     - -1
@@ -20,6 +20,7 @@ Simulation:
   qe: 1 # quantum efficiency
   spurious_c: 0.000 # not sure what this is
   sig_read: 0.001 # sigma of the read noise
+  robust_training: False
 
 
 Network:
@@ -31,19 +32,24 @@ Network:
   psf_pred: False
   local_context: False # This will just use 1 frame for context, always False for our use-case
   use_coordconv: False # Use if you want to add cell-bg coordinate on top
-  factor: # calculate these from data
-  offset: # calculate these from data
+  factor: 120.0 # calculate these from data
+  offset: 100.0 # calculate these from data
 
 
 Train:
-  lr: 
-  w_decay:
-  lr_decay:
+  lr: 0.0006
+  w_decay: 0.1
+  lr_decay: 0.9
   step_size: 1000 # lr decay step size
   batch_size: 16
   max_iters: 50000
   print_output: True
   print_freq: 100
+  photon_filter: True
+  photon_filter_threshold: 100
+  P_locs_cse: True # uses cross-entropy loss that is not found in decode
+  robust_training: False # Not relevant so far 
+  clip_gradient_max_norm: 0.03
 
 
 PSF:
@@ -71,5 +77,6 @@ Hardware:
 InOut:
   experiment_out: '/mnt/sda1/SMLAT/training_runs/'
   calibration_file: ''
+  filename: '/mnt/sda1/SMLAT/training_runs/model.pickle'
 Meta:
   version:

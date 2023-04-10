@@ -1,6 +1,7 @@
 import torch.nn as nn
 import numpy as np
 import torch
+from cellbgnet.utils.hardware import cpu, gpu
 
 class TrainFuncs:
 
@@ -27,14 +28,42 @@ class TrainFuncs:
                 int((1 - simulation_params['margin_empty']) * train_size)] += 1
             prob_map = prob_map / prob_map.sum() * density
 
-            imgs_sim, xyzi_gt, s_mask, bg, locs = self.data_generator.simulate_data(
-                
+            # bg returned by datasimulator is just the psf and not the bg
+            imgs_sim, xyzi_gt, s_mask, psf_imgs_gt, locs = self.data_generator.simulate_data( 
+                prob_map=gpu(prob_map), batch_size=self.batch_size,
+                local_context=self.local_context,
+                photon_filter=self.train_params['photon_filter'],
+                photon_filter_threshold=self.train_params['photon_filter_threshold'],
+                P_locs_cse=self.train_params['P_locs_cse'],
+                iter_num=self._iter_count, train_size=train_size,
+                robust_training=self.data_generator.simulation_params['robust_training']
             )
-
+            cell_bg_coord = None
         else:
+            # write stuff for using cell_bg_coord and set cell_bg_coord to pass on to inference
             pass
 
-        pass
+        P, xyzi_est, xyzi_sig, psf_imgs_est = self.inferring(imgs_sim, cell_bg_coord)
+
+        # loss
+        loss_total = self.final_loss(P, xyzi_est, xyzi_sig, xyzi_gt, s_mask, psf_imgs_est, psf_imgs_gt, locs)
+
+        self.optimizer_infer.zero_grad()
+        loss_total.backward()
+
+        # avoid too large gradient
+        torch.nn.utils.clip_grad_norm_(self.net_weights, 
+                    max_norm=self.train_params['clip_gradient_max_norm'],
+                    norm_type=2)
+        
+        # update the network and optimizer state
+        self.optimizer_infer.step()
+        self.scheduler_infer.step()
+
+        self._iter_count += 1
+
+        return loss_total.detach()
+
 
     def look_trainingdata(self):
         simulation_params = self.data_generator.simulation_params

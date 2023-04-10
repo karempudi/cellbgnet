@@ -23,6 +23,7 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
         self.net_params = param.Network.to_dict()
         self.psf_params = param.PSF.to_dict()
         self.simulation_params = param.Simulation.to_dict()
+        self.hardware_params = param.Hardware.to_dict() 
 
         self.device = torch.device(param.Hardware.device)
         self.using_gpu = True if param.Hardware.device[:4] == 'cuda' else False
@@ -47,7 +48,7 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
                                        use_coordconv=self.net_params['use_coordconv']).to(self.device)
 
         # Setup data simulation
-        self.data_generator = DataSimulator(self.psf_params, self.simulation_params)
+        self.data_generator = DataSimulator(self.psf_params, self.simulation_params, self.hardware_params)
 
         self.net_weights = list(self.frame_module.parameters()) + list(self.context_module.parameters()) + list(self.out_module.parameters())
         # Setup optimizer
@@ -60,9 +61,11 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
         # initialize counters
         self.recorder = {}
         self._iter_count = 0
+        self.batch_size = self.train_params['batch_size']
+        self.train_size = self.simulation_params['train_size']
 
         # file to save
-        self.filename = filename
+        self.filename = param.InOut.filename
         # Done initialization
 
     def init_recorder(self):
@@ -130,22 +133,21 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
             self.recorder['update_time'][self._iter_count] = updatetime
 
             if print_output:
-                self._iter_count > 1000 and self.evaluation_params['ground_truth'] is not None:
-                self.eval_func()
-
-                print('{}{:0.3f}'.format('JoR: ', float(self.recorder['jor'][self._iter_count])), end='')
-                # print('{}{}{:0.3f}'.format(' || ', 'Eff_lat: ', self.recorder['eff_lat'][self._iter_count]),end='')
-                print('{}{}{:0.3f}'.format(' || ', 'Eff_3d: ', self.recorder['eff_3d'][self._iter_count]), end='')
-                print('{}{}{:0.3f}'.format(' || ', 'Jaccard: ', self.recorder['jaccard'][self._iter_count]), end='')
-                print('{}{}{:0.3f}'.format(' || ', 'Factor: ', self.recorder['n_per_img'][self._iter_count]),end='')
-                print('{}{}{:0.3f}'.format(' || ', 'RMSE_lat: ', self.recorder['rmse_lat'][self._iter_count]),end='')
-                print('{}{}{:0.3f}'.format(' || ', 'RMSE_ax: ', self.recorder['rmse_ax'][self._iter_count]), end='')
-                print('{}{}{:0.3f}'.format(' || ', 'Cost: ', self.recorder['cost_hist'][self._iter_count]), end='')
-                print('{}{}{:0.3f}'.format(' || ', 'Recall: ', self.recorder['recall'][self._iter_count]), end='')
-                print('{}{}{:0.3f}'.format(' || ', 'Precision: ', self.recorder['precision'][self._iter_count]),end='')
-                print('{}{}{}'.format(' || ', 'BatchNr.: ', self._iter_count), end='')
-                print('{}{}{:0.1f}{}'.format(' || ', 'Time Upd.: ', float(updatetime), ' ms '))
-            else:
+                if self._iter_count > 1000 and self.evaluation_params['ground_truth'] is not None:
+                    self.eval_func()
+                    print('{}{:0.3f}'.format('JoR: ', float(self.recorder['jor'][self._iter_count])), end='')
+                    # print('{}{}{:0.3f}'.format(' || ', 'Eff_lat: ', self.recorder['eff_lat'][self._iter_count]),end='')
+                    print('{}{}{:0.3f}'.format(' || ', 'Eff_3d: ', self.recorder['eff_3d'][self._iter_count]), end='')
+                    print('{}{}{:0.3f}'.format(' || ', 'Jaccard: ', self.recorder['jaccard'][self._iter_count]), end='')
+                    print('{}{}{:0.3f}'.format(' || ', 'Factor: ', self.recorder['n_per_img'][self._iter_count]),end='')
+                    print('{}{}{:0.3f}'.format(' || ', 'RMSE_lat: ', self.recorder['rmse_lat'][self._iter_count]),end='')
+                    print('{}{}{:0.3f}'.format(' || ', 'RMSE_ax: ', self.recorder['rmse_ax'][self._iter_count]), end='')
+                    print('{}{}{:0.3f}'.format(' || ', 'Cost: ', self.recorder['cost_hist'][self._iter_count]), end='')
+                    print('{}{}{:0.3f}'.format(' || ', 'Recall: ', self.recorder['recall'][self._iter_count]), end='')
+                    print('{}{}{:0.3f}'.format(' || ', 'Precision: ', self.recorder['precision'][self._iter_count]),end='')
+                    print('{}{}{}'.format(' || ', 'BatchNr.: ', self._iter_count), end='')
+                    print('{}{}{:0.1f}{}'.format(' || ', 'Time Upd.: ', float(updatetime), ' ms '))
+                else:
                     # print('{}{:0.3f}'.format('Factor: ', self.recorder['n_per_img'][self._iter_count]), end='')
                     print('{}{}{:0.3f}'.format(' || ', 'Cost: ', self.recorder['cost_hist'][self._iter_count]), end='')
                     print('{}{}{:0.1f}{}'.format(' || ', 'Time Upd.: ', float(updatetime), ' ms '), end='')
