@@ -63,6 +63,11 @@ PSF:
 
 Evaluation:
   ground_truth: True
+  number_images: 1024
+  eval_size: 128
+  molecules_per_img: 4
+  margin_empty: 0.05
+
 
 
 
