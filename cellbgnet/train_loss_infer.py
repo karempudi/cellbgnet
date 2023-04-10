@@ -178,7 +178,7 @@ class InferFuncs:
             scaled_x = scaled_x[:, None]
             fm_out = self.frame_module(scaled_x, cell_bg_coord)
             if self.local_context:
-                zeros = torhc.zeros_like(fm_out[:1])
+                zeros = torch.zeros_like(fm_out[:1])
                 h_t0 = fm_out
                 h_tm1 = torch.cat([zeros, fm_out], 0)[:-1]
                 h_tp1 = torch.cat([fm_out, zeros], 0)[1:]

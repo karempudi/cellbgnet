@@ -53,7 +53,7 @@ Train:
 
 
 PSF:
-  calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal.mat'
+  calib_file: '/mnt/sda2/SMLAT/data/KonradPSF/splines/bead_3dcal.mat'
   psf_size: 41 # kinda irrelevant for spline model psf
   photon_scale: 7000 # i guess max numbeor of photons
   z_scale: 400 # what range of values you want to have z emitters in 
@@ -80,8 +80,8 @@ Hardware:
   unix_niceness: 0
 
 InOut:
-  experiment_out: '/mnt/sda1/SMLAT/training_runs/'
+  experiment_out: '/mnt/sda2/SMLAT/training_runs/'
   calibration_file: ''
-  filename: '/mnt/sda1/SMLAT/training_runs/model.pickle'
+  filename: '/mnt/sda2/SMLAT/training_runs/model.pickle'
 Meta:
   version:
