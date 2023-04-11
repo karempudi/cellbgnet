@@ -95,8 +95,8 @@ def infer_imgs(model, images, cell_bg_coord_imgs=None, batch_size=100, z_scale=1
                 # images for comparision, 
                 # 10 is important to divide cuz you multiplied to balance the loss function components
                 infs['BG'].append(bg[1:-1].cpu() * model.psf_params['photon_scale'] / 10
-                                  * model.data_generator.simulation_pars['qe'] 
-                                  / model.data_generator.simulation_pars['e_per_adu'])
+                                  * model.data_generator.simulation_params['qe'] 
+                                  / model.data_generator.simulation_params['e_per_adu'])
                 
 
         for k in infs.keys():
@@ -507,12 +507,12 @@ def recognition(model, eval_imgs_all, batch_size, use_tqdm, nms, pixel_nm, plot_
         if use_tqdm:
             print('{}{}{}{}{}{}{}{}{}{}'.format('\nprocessing area:', i + 1, '/', area_rows * area_columns,
                                                     ', input field_xy:', cpu(field_xy), ', use_coordconv:',
-                                                    model.net_pars['use_coordconv'], ', retain locs in area:',
+                                                    model.net_params['use_coordconv'], ', retain locs in area:',
                                                     origin_areas_list[i]))
         else:
             print('{}{}{}{}{}{}{}{}{}{}'.format('\rprocessing area:',i+1, '/', area_rows * area_columns,
                                                     ', input field_xy:', cpu(field_xy), ', use_coordconv:',
-                                                    model.net_pars['use_coordconv'],', retain locs in area:',
+                                                    model.net_params['use_coordconv'],', retain locs in area:',
                                                     origin_areas_list[i]), end='')
         
         # infer one are at time, you will batch each of the region into one batch

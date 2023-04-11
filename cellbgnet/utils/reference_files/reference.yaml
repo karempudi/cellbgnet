@@ -29,7 +29,7 @@ Network:
   padding: 1
   kernel_size: 3
   sig_pred: True
-  psf_pred: False
+  psf_pred: True
   local_context: False # This will just use 1 frame for context, always False for our use-case
   use_coordconv: False # Use if you want to add cell-bg coordinate on top
   factor: 120.0 # calculate these from data
@@ -53,7 +53,7 @@ Train:
 
 
 PSF:
-  calib_file: '/mnt/sda2/SMLAT/data/KonradPSF/splines/bead_3dcal.mat'
+  calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal.mat'
   psf_size: 41 # kinda irrelevant for spline model psf
   photon_scale: 7000 # i guess max numbeor of photons
   z_scale: 400 # what range of values you want to have z emitters in 
@@ -62,11 +62,19 @@ PSF:
     - 65
 
 Evaluation:
-  ground_truth: True
-  number_images: 1024
-  eval_size: 128
-  molecules_per_img: 4
-  margin_empty: 0.05
+  #ground_truth: True
+  number_images: 4096 # number of images to do eval on
+  eval_size: 128 # size of the evaluation image
+  molecules_per_img: 4 # density used in the prob_map creation before sampling coordinates
+  margin_empty: 0.05 # leave out the boundary
+  use_cellbg: False
+  cellbg_dir: None  # directory of mask you would like to use for cell bg coord
+  candidate_threshold: 0.3
+  nms_threshold: 0.7
+  print_result: False
+  batch_size: 4
+  padded_background: 110 # we will get back to this padded value later
+
 
 
 
@@ -80,8 +88,8 @@ Hardware:
   unix_niceness: 0
 
 InOut:
-  experiment_out: '/mnt/sda2/SMLAT/training_runs/'
+  experiment_out: '/mnt/sda1/SMLAT/training_runs/'
   calibration_file: ''
-  filename: '/mnt/sda2/SMLAT/training_runs/model.pickle'
+  filename: '/mnt/sda1/SMLAT/training_runs/model_20230411'
 Meta:
   version:

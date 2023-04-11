@@ -2,11 +2,14 @@ import collections
 import pickle
 import time
 import torch
+import numpy as np
+import matplotlib.pyplot as plt
 
 from cellbgnet.networks import UnetBGConv, OutnetBGConv
 from cellbgnet.train_loss_infer import TrainFuncs, LossFuncs, InferFuncs
 from cellbgnet.datasets import DataSimulator
 from cellbgnet.utils.hardware import cpu, gpu
+from cellbgnet.analyze_eval import recognition, assess
 
 class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
 
@@ -79,6 +82,8 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
         self.recorder['jaccard'] = collections.OrderedDict([])
         self.recorder['rmse_lat'] = collections.OrderedDict([])
         self.recorder['rmse_ax'] = collections.OrderedDict([])
+        self.recorder['rmse_x'] = collections.OrderedDict([])
+        self.recorder['rmse_y'] = collections.OrderedDict([])
         self.recorder['rmse_vol'] = collections.OrderedDict([])
         self.recorder['jor'] = collections.OrderedDict([])
         self.recorder['eff_lat'] = collections.OrderedDict([])
@@ -87,10 +92,74 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
 
 
     def init_eval_data(self):
-        pass
+        eval_size_x = self.evaluation_params['eval_size']
+        eval_size_y = self.evaluation_params['eval_size']
+        density = self.evaluation_params['molecules_per_img']
 
-    def eval_func(self):
-        pass
+        # Set the probablity map 
+        prob_map = np.ones([1, eval_size_x, eval_size_y])
+        # no molecules on the boundary
+        prob_map[0, int(self.evaluation_params['margin_empty'] * eval_size_y): int((1 - self.evaluation_params['margin_empty']) * eval_size_y),
+                    int(self.evaluation_params['margin_empty'] * eval_size_x): int((1 - self.evaluation_params['margin_empty']) * eval_size_x)] += 1
+        prob_map = (prob_map / prob_map.sum()) * density
+
+        ground_truth = []
+        eval_imgs = np.zeros([1, eval_size_y, eval_size_x])
+
+        for j in range(self.evaluation_params['number_images']):
+            imgs_sim, xyzi_mat, s_mask, psf_est, locs = self.data_generator.simulate_data(
+                    prob_map=gpu(prob_map), batch_size=1, local_context=self.local_context,
+                    photon_filter=False, photon_filter_threshold=0, P_locs_cse=False,
+                    iter_num=self._iter_count, train_size=eval_size_x)
+            imgs_tmp = cpu(imgs_sim)[:, 1] if self.local_context else cpu(imgs_sim)[:, 0]
+            eval_imgs = np.concatenate((eval_imgs, imgs_tmp), axis = 0)
+            
+            # pool all the xyzi values
+            for i in range(xyzi_mat.shape[1]):
+                ground_truth.append(
+                        [i + 1, j + 1, cpu(xyzi_mat[0, i, 0]) * self.data_generator.psf_params['pixel_size_xy'][0],
+                        cpu(xyzi_mat[0, i, 1]) * self.data_generator.psf_params['pixel_size_xy'][1],
+                        cpu(xyzi_mat[0, i, 2]) * self.data_generator.psf_params['z_scale'],
+                        cpu(xyzi_mat[0, i, 3]) * self.data_generator.psf_params['photon_scale']]
+                )
+            print('{}{}{}'.format('\rAlready simulated ', j+1, ' evaluation images'), end='')
+
+        self.evaluation_params['eval_imgs'] = eval_imgs[1:]
+        self.evaluation_params['ground_truth'] = ground_truth
+        self.evaluation_params['fov_size'] = [eval_size_x * self.data_generator.psf_params['pixel_size_xy'][0],
+                                eval_size_y * self.data_generator.psf_params['pixel_size_xy'][1]]
+        print('\neval images shape:', self.evaluation_params['eval_imgs'].shape, 'contain', len(ground_truth), 'molecules,')
+
+
+        plt.figure(constrained_layout=True)
+        ax_tmp = plt.subplot(1,1,1)
+        img_tmp = plt.imshow(self.evaluation_params['eval_imgs'][0])
+        plt.colorbar(mappable=img_tmp,ax=ax_tmp, fraction=0.046, pad=0.04)
+        plt.title('the first image of eval set,check the background')
+        # plt.tight_layout()
+        plt.show()
+
+    def eval_func(self, candidate_threshold=0.3, nms_threshold=0.7, print_result=False):
+        if self.evaluation_params['ground_truth'] is not None:
+            preds_raw, n_per_img, _ = recognition(model=self, eval_imgs_all=self.evaluation_params['eval_imgs'],
+                                                  batch_size=self.evaluation_params['batch_size'], use_tqdm=False,
+                                                  nms=True, candidate_threshold=candidate_threshold,
+                                                  nms_threshold=nms_threshold,
+                                                  pixel_nm=self.data_generator.psf_params['pixel_size_xy'],
+                                                  plot_num=None,
+                                                  win_size=self.data_generator.simulation_params['train_size'],
+                                                  padding=True,
+                                                  padded_background=self.evaluation_params['padded_background'])
+            match_dict, _ = assess(test_frame_nbr=self.evaluation_params['number_images'],
+                                   test_csv=self.evaluation_params['ground_truth'], pred_inp=preds_raw,
+                                   size_xy=self.evaluation_params['fov_size'], tolerance=250, border=450,
+                                   print_res=print_result, min_int=False, tolerance_ax=500, segmented=False)
+
+            for k in self.recorder.keys():
+                if k in match_dict:
+                    self.recorder[k][self._iter_count] = match_dict[k]
+
+            self.recorder['n_per_img'][self._iter_count] = n_per_img
 
 
     def fit(self, batch_size=16, max_iters=50000, print_output=True, print_freq=100):
@@ -126,7 +195,7 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
                 total_cost.append(cpu(loss))
             total_time += (time.time()  - t0)
 
-            self.recorder['cost_hist'][self._iter_counter] = np.mean(total_cost)
+            self.recorder['cost_hist'][self._iter_count] = np.mean(total_cost)
             updatetime = 1000 * total_time / (self._iter_count - last_iter)
             last_iter = self._iter_count
             total_time = 0
@@ -134,7 +203,9 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
 
             if print_output:
                 if self._iter_count > 1000 and self.evaluation_params['ground_truth'] is not None:
-                    self.eval_func()
+                    self.eval_func(candidate_threshold=self.evaluation_params['candidate_threshold'],
+                                    nms_threshold=self.evaluation_params['nms_threshold'],
+                                    print_result=self.evaluation_params['print_result'])
                     print('{}{:0.3f}'.format('JoR: ', float(self.recorder['jor'][self._iter_count])), end='')
                     # print('{}{}{:0.3f}'.format(' || ', 'Eff_lat: ', self.recorder['eff_lat'][self._iter_count]),end='')
                     print('{}{}{:0.3f}'.format(' || ', 'Eff_3d: ', self.recorder['eff_3d'][self._iter_count]), end='')
@@ -142,6 +213,8 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
                     print('{}{}{:0.3f}'.format(' || ', 'Factor: ', self.recorder['n_per_img'][self._iter_count]),end='')
                     print('{}{}{:0.3f}'.format(' || ', 'RMSE_lat: ', self.recorder['rmse_lat'][self._iter_count]),end='')
                     print('{}{}{:0.3f}'.format(' || ', 'RMSE_ax: ', self.recorder['rmse_ax'][self._iter_count]), end='')
+                    print('{}{}{:0.3f}'.format(' || ', 'RMSE_x: ', self.recorder['rmse_x'][self._iter_count]), end='')
+                    print('{}{}{:0.3f}'.format(' || ', 'RMSE_y: ', self.recorder['rmse_y'][self._iter_count]), end='')
                     print('{}{}{:0.3f}'.format(' || ', 'Cost: ', self.recorder['cost_hist'][self._iter_count]), end='')
                     print('{}{}{:0.3f}'.format(' || ', 'Recall: ', self.recorder['recall'][self._iter_count]), end='')
                     print('{}{}{:0.3f}'.format(' || ', 'Precision: ', self.recorder['precision'][self._iter_count]),end='')
@@ -155,7 +228,7 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
 
             #  save the model
             if self.filename:
-                if self._iter_count > 1000 and self.evaluation_pars['ground_truth'] is not None:
+                if self._iter_count > 1000 and self.evaluation_params['ground_truth'] is not None:
                     best_record = self.recorder['eff_3d'][self._iter_count]
                     rmse_lat_best = self.recorder['rmse_lat'][self._iter_count]
                     rmse_ax_best = self.recorder['rmse_ax'][self._iter_count]
