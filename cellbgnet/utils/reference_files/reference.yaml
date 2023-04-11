@@ -16,7 +16,7 @@ Simulation:
   perlin_noise_res: 64
   baseline: 100
   bg_values: 110
-  e_per_adu: 1 # e per adu of the camera
+  e_per_adu: 0.3 # e per adu of the camera
   qe: 1 # quantum efficiency
   spurious_c: 0.000 # not sure what this is
   sig_read: 0.001 # sigma of the read noise
@@ -63,7 +63,7 @@ PSF:
 
 Evaluation:
   #ground_truth: True
-  number_images: 4096 # number of images to do eval on
+  number_images: 1024 # number of images to do eval on
   eval_size: 128 # size of the evaluation image
   molecules_per_img: 4 # density used in the prob_map creation before sampling coordinates
   margin_empty: 0.05 # leave out the boundary
