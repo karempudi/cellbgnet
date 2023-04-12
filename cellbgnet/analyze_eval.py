@@ -11,6 +11,7 @@ import operator
 import csv
 
 from cellbgnet.utils.hardware import cpu, gpu
+from cellbgnet.simulation.psf_kernel import SMAPSplineCoefficient
 
 
 def flip_filt(filt):
@@ -868,4 +869,69 @@ def limited_matching(truth_origin, pred_list_origin, min_int, limited_x=[0, 2048
         
         
 
+def spline_crlb_plot(calib_file, z_range=400.0, pixel_size_xy=[65.0, 65.0], dz=25.0,
+                 img_size=129, step_size=10.0, photon_counts=10000.0, bg_photons=100.0):
+    """
+    Plots the crlb values of the spline model. Calculated from spline PSF package that comes
+    with decode
     
+    Arguments:
+    ------------
+        calib_file: .mat file you get from SMAP
+
+        z_range (float, nms): z_range over which you want to calculate the CRLBs
+
+        pixel_size_xy (list of two floats): pixel size to set the voxel size in the cubic spline model
+
+        dz: voxel size in z, you used for spline calibration
+
+        img_size (int): odd number so that psf will be place at the center when 
+                        calculating CRLB
+
+        step_size (float): step value increments at which CRLB will be calculated.
+
+        photon_counts (float): Each PSF will have the same photon counts
+
+        bg_photons (float): bg value for PSF simulation
+
+    """
+    psf = SMAPSplineCoefficient(calib_file).init_spline(
+        xextent=[-0.5, img_size-0.5], yextent=[-0.5, img_size-0.5], 
+        img_shape=[img_size, img_size], device='cpu',
+        roi_size=None, roi_auto_center=None
+    )
+    
+    psf.vx_size = torch.tensor([pixel_size_xy[0], pixel_size_xy[1], dz])
+
+    z = torch.arange(-z_range, z_range+step_size, step_size)
+
+    n_planes = len(z)
+
+    xyz = torch.zeros((len(z), 3))
+    xyz[:, 0] = img_size // 2
+    xyz[:, 1] = img_size // 2
+    xyz[:, 2] = z
+    phot = photon_counts * torch.ones((n_planes,))
+    bg = bg_photons * torch.ones((n_planes,))
+
+    crlb, _ = psf.crlb_sq(xyz, phot, bg)
+
+    plt.figure(constrained_layout=True)
+    plt.plot(z, crlb[:, 0], 'b', z, crlb[:, 1], 'g', z, crlb[:, 2], 'r')
+    plt.legend((r'$\sqrt{CRLB_{x}}$', r'$\sqrt{CRLB_{y}}$' , r'$\sqrt{CRLB_{z}}$'))
+    plt.xlim([z[0], z[-1]])
+    plt.xlabel('Z (nm)')
+    plt.ylabel(r'$\sqrt{CRLB}$ (nm)')
+    plt.title(f"CRLB plot at photon counts={photon_counts} and background={bg_photons}")
+    plt.show()
+
+
+def model_RMSE_plot():
+    """
+    Plot the RMSE values in the localization to be able to compare against CRLB 
+    obtainable from the spline model.
+
+    Arguments:
+    -----------
+        
+    """
