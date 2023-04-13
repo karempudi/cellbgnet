@@ -870,7 +870,8 @@ def limited_matching(truth_origin, pred_list_origin, min_int, limited_x=[0, 2048
         
 
 def spline_crlb_plot(calib_file, z_range=400.0, pixel_size_xy=[65.0, 65.0], dz=25.0,
-                 img_size=129, step_size=10.0, photon_counts=10000.0, bg_photons=100.0):
+                 img_size=129, step_size=10.0, photon_counts=10000.0, bg_photons=100.0,
+                 ):
     """
     Plots the crlb values of the spline model. Calculated from spline PSF package that comes
     with decode
@@ -926,6 +927,8 @@ def spline_crlb_plot(calib_file, z_range=400.0, pixel_size_xy=[65.0, 65.0], dz=2
     plt.show()
 
 
+
+
 def model_RMSE_plot():
     """
     Plot the RMSE values in the localization to be able to compare against CRLB 
@@ -933,5 +936,5 @@ def model_RMSE_plot():
 
     Arguments:
     -----------
-        
+
     """
