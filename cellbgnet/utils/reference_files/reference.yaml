@@ -9,7 +9,7 @@ Simulation:
     - -1
     - 1
   survival_prob: # only used if there is local context, so in our case it is not used
-  min_photon: 0.300 # intensity distributions sampled from (min_ph, 1)
+  min_photon: 0.22 # intensity distributions sampled from (min_ph, 1)
   camera: 'sCMOS'
   perlin_noise: False
   perlin_noise_factor: 0.2 # what fraction of bg photons you want to multiply to get PN noise map
@@ -53,9 +53,9 @@ Train:
 
 
 PSF:
-  calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal_venus.mat'
+  calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal_cherry.mat'
   psf_size: 41 # kinda irrelevant for spline model psf
-  photon_scale: 2400 # i guess max numbeor of photons
+  photon_scale: 3000 # i guess max numbeor of photons
   z_scale: 400 # what range of values you want to have z emitters in 
   pixel_size_xy:
     - 65
@@ -63,7 +63,7 @@ PSF:
 
 Evaluation:
   #ground_truth: True
-  number_images: 1024 # number of images to do eval on
+  number_images: 4096 # number of images to do eval on
   eval_size: 128 # size of the evaluation image
   molecules_per_img: 10 # density used in the prob_map creation before sampling coordinates
   margin_empty: 0.05 # leave out the boundary
@@ -90,6 +90,6 @@ Hardware:
 InOut:
   experiment_out: '/mnt/sda1/SMLAT/training_runs/'
   calibration_file: ''
-  filename: '/mnt/sda1/SMLAT/training_runs/model_20230416_venus_100k'
+  filename: '/mnt/sda1/SMLAT/training_runs/model_20230416_cherry_100k'
 Meta:
   version:
