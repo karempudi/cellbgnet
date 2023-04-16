@@ -3,23 +3,23 @@
 Simulation:
   train_size: 128 # size of the images network see
   use_cell_bg: False
-  density: 4 
+  density: 10
   margin_empty: 0.05 # what percent of the image you want to leave empty on the image
   z_prior:
     - -1
     - 1
   survival_prob: # only used if there is local context, so in our case it is not used
-  min_photon: 0.428 # intensity distributions sampled from (min_ph, 1)
+  min_photon: 0.300 # intensity distributions sampled from (min_ph, 1)
   camera: 'sCMOS'
   perlin_noise: False
   perlin_noise_factor: 0.2 # what fraction of bg photons you want to multiply to get PN noise map
   perlin_noise_res: 64
   baseline: 100
-  bg_values: 110
-  e_per_adu: 0.3 # e per adu of the camera
-  qe: 1 # quantum efficiency
+  bg_values: 141.0 # background value estimated from the data 
+  e_per_adu: 0.25 # e per adu of the camera
+  qe: 0.95 # quantum efficiency
   spurious_c: 0.000 # not sure what this is
-  sig_read: 0.001 # sigma of the read noise
+  sig_read: 1.2 # sigma of the read noise in electrons
   robust_training: False
 
 
@@ -32,12 +32,12 @@ Network:
   psf_pred: True
   local_context: False # This will just use 1 frame for context, always False for our use-case
   use_coordconv: False # Use if you want to add cell-bg coordinate on top
-  factor: 120.0 # calculate these from data
-  offset: 100.0 # calculate these from data
+  factor: 186.5 # calculate these from data
+  offset: 117.0 # calculate these from data
 
 
 Train:
-  lr: 0.0006
+  lr: 0.0002
   w_decay: 0.1
   lr_decay: 0.9
   step_size: 1000 # lr decay step size
@@ -53,9 +53,9 @@ Train:
 
 
 PSF:
-  calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal.mat'
+  calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal_venus.mat'
   psf_size: 41 # kinda irrelevant for spline model psf
-  photon_scale: 7000 # i guess max numbeor of photons
+  photon_scale: 2400 # i guess max numbeor of photons
   z_scale: 400 # what range of values you want to have z emitters in 
   pixel_size_xy:
     - 65
@@ -65,7 +65,7 @@ Evaluation:
   #ground_truth: True
   number_images: 1024 # number of images to do eval on
   eval_size: 128 # size of the evaluation image
-  molecules_per_img: 4 # density used in the prob_map creation before sampling coordinates
+  molecules_per_img: 10 # density used in the prob_map creation before sampling coordinates
   margin_empty: 0.05 # leave out the boundary
   use_cellbg: False
   cellbg_dir: None  # directory of mask you would like to use for cell bg coord
@@ -90,6 +90,6 @@ Hardware:
 InOut:
   experiment_out: '/mnt/sda1/SMLAT/training_runs/'
   calibration_file: ''
-  filename: '/mnt/sda1/SMLAT/training_runs/model_20230411'
+  filename: '/mnt/sda1/SMLAT/training_runs/model_20230416_venus_100k'
 Meta:
   version:

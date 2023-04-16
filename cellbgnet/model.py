@@ -219,6 +219,7 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
                     print('{}{}{:0.3f}'.format(' || ', 'Recall: ', self.recorder['recall'][self._iter_count]), end='')
                     print('{}{}{:0.3f}'.format(' || ', 'Precision: ', self.recorder['precision'][self._iter_count]),end='')
                     print('{}{}{}'.format(' || ', 'BatchNr.: ', self._iter_count), end='')
+                    print('{}{}{:0.3f}'.format(' || ', 'Cost: ', self.recorder['cost_hist'][self._iter_count]), end='')
                     print('{}{}{:0.1f}{}'.format(' || ', 'Time Upd.: ', float(updatetime), ' ms '))
                 else:
                     # print('{}{:0.3f}'.format('Factor: ', self.recorder['n_per_img'][self._iter_count]), end='')

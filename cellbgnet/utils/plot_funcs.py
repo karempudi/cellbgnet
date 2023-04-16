@@ -76,6 +76,7 @@ def plot_psf(calib_file, z_range=500.0, plot_step=25.0, img_size=41,
 
     plt.tight_layout()
     plt.show()
+    return rois
 
 
 def plot_od(od, label=None, col=None):
