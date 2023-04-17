@@ -9,13 +9,13 @@ Simulation:
     - -1
     - 1
   survival_prob: # only used if there is local context, so in our case it is not used
-  min_photon: 0.22 # intensity distributions sampled from (min_ph, 1)
+  min_photon: 0.25 # intensity distributions sampled from (min_ph, 1)
   camera: 'sCMOS'
   perlin_noise: False
   perlin_noise_factor: 0.2 # what fraction of bg photons you want to multiply to get PN noise map
   perlin_noise_res: 64
   baseline: 100
-  bg_values: 141.0 # background value estimated from the data 
+  bg_values: 115.0 # background value estimated from the data 
   e_per_adu: 0.25 # e per adu of the camera
   qe: 0.95 # quantum efficiency
   spurious_c: 0.000 # not sure what this is
@@ -32,12 +32,12 @@ Network:
   psf_pred: True
   local_context: False # This will just use 1 frame for context, always False for our use-case
   use_coordconv: False # Use if you want to add cell-bg coordinate on top
-  factor: 186.5 # calculate these from data
-  offset: 117.0 # calculate these from data
+  factor: 520.0 # calculate these from data
+  offset: 100.0 # calculate these from data
 
 
 Train:
-  lr: 0.0002
+  lr: 0.0006
   w_decay: 0.1
   lr_decay: 0.9
   step_size: 1000 # lr decay step size
@@ -53,10 +53,10 @@ Train:
 
 
 PSF:
-  calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal_cherry.mat'
+  calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal_venus.mat'
   psf_size: 41 # kinda irrelevant for spline model psf
-  photon_scale: 3000 # i guess max numbeor of photons
-  z_scale: 400 # what range of values you want to have z emitters in 
+  photon_scale: 5000 # i guess max numbeor of photons
+  z_scale: 500 # what range of values you want to have z emitters in 
   pixel_size_xy:
     - 65
     - 65
@@ -90,6 +90,6 @@ Hardware:
 InOut:
   experiment_out: '/mnt/sda1/SMLAT/training_runs/'
   calibration_file: ''
-  filename: '/mnt/sda1/SMLAT/training_runs/model_20230416_cherry_100k'
+  filename: '/mnt/sda1/SMLAT/training_runs/model_20230416_venus_20k_avgbg'
 Meta:
   version:
