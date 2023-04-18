@@ -9,7 +9,7 @@ Simulation:
     - -1
     - 1
   survival_prob: # only used if there is local context, so in our case it is not used
-  min_photon: 0.25 # intensity distributions sampled from (min_ph, 1)
+  min_photon: 0.3 # intensity distributions sampled from (min_ph, 1)
   camera: 'sCMOS'
   perlin_noise: False
   perlin_noise_factor: 0.2 # what fraction of bg photons you want to multiply to get PN noise map
@@ -40,7 +40,7 @@ Train:
   lr: 0.0006
   w_decay: 0.1
   lr_decay: 0.9
-  step_size: 1000 # lr decay step size
+  step_size: 5000 # lr decay step size
   batch_size: 16
   max_iters: 50000
   print_output: True
@@ -55,7 +55,7 @@ Train:
 PSF:
   calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal_venus.mat'
   psf_size: 41 # kinda irrelevant for spline model psf
-  photon_scale: 5000 # i guess max numbeor of photons
+  photon_scale: 3000 # i guess max numbeor of photons
   z_scale: 500 # what range of values you want to have z emitters in 
   pixel_size_xy:
     - 65
@@ -90,6 +90,6 @@ Hardware:
 InOut:
   experiment_out: '/mnt/sda1/SMLAT/training_runs/'
   calibration_file: ''
-  filename: '/mnt/sda1/SMLAT/training_runs/model_20230416_venus_20k_avgbg'
+  filename: '/mnt/sda1/SMLAT/training_runs/model_20230416_venus_20k_avgbg_lower_counts'
 Meta:
   version:
