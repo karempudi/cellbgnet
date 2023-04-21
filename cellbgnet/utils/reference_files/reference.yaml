@@ -73,7 +73,7 @@ Evaluation:
   nms_threshold: 0.7
   print_result: False
   batch_size: 4
-  padded_background: 110 # we will get back to this padded value later
+  padded_background: 115 # we will get back to this padded value later
 
 
 

@@ -278,7 +278,20 @@ def array_to_list(infs, wobble=[0, 0], pix_nm=[100, 100], z_scale=700, int_scale
     -------
     res_dict: pred_list
         List of localizations with columns: 'localization', 'frame', 'x', 'y', 'z', 'intensity',
-        'x_sig', 'y_sig', 'z_sig'
+        'x_sig', 'y_sig', 'z_sig' in the following order
+            1. counter of the molecule 
+            2. image number used to index into the number of the image in the prediction arrays
+            3. x position in nm where 0 is top left corner
+            4. y position in nm where 0 is top left corner
+            5. z position in nm where 0 is from the reference 0 nm in height
+            6. photon counts 
+            7. probability afer nms
+            8. x_sigma in nm 
+            9. y_sigma in nm
+            10. z_sigma in nm
+            11. photon_counts_sigma
+            12. x offset
+            13. y offset
     """
     samples = infs['Samples_ps']  # determine which pixel has a molecule
     # probs = infs['Probs_ps']
