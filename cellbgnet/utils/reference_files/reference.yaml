@@ -2,8 +2,9 @@
 
 Simulation:
   train_size: 128 # size of the images network see
-  use_cell_bg: False
-  density: 10
+  train_type: 'cells' # or 'uniform'
+  use_cell_bg: False #  will come back to this later
+  density: 10 # number of dots per frame
   margin_empty: 0.05 # what percent of the image you want to leave empty on the image
   z_prior:
     - -1
