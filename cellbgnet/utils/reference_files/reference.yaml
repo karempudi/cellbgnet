@@ -54,7 +54,7 @@ Train:
 
 
 PSF:
-  calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal_venus.mat'
+  calib_file: '/mnt/sda2/SMLAT/data/KonradPSF/splines/bead_3dcal_venus.mat'
   psf_size: 41 # kinda irrelevant for spline model psf
   photon_scale: 3000 # i guess max numbeor of photons
   z_scale: 500 # what range of values you want to have z emitters in 
