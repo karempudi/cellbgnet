@@ -3,8 +3,9 @@
 Simulation:
   train_size: 128 # size of the images network see
   train_type: 'cells' # or 'uniform'
-  use_cell_bg: False #  will come back to this later
-  density: 10 # number of dots per frame
+  psf_intensity_normalization: True # false will try to generate all dots at the same time
+  density: 0.003125 # This should put 2 dots in avg cell area 320
+  non_cell_density: 10 # when no cells are there, we use 10 dots per frame
   margin_empty: 0.05 # what percent of the image you want to leave empty on the image
   z_prior:
     - -1
@@ -22,6 +23,9 @@ Simulation:
   spurious_c: 0.000 # not sure what this is
   sig_read: 1.2 # sigma of the read noise in electrons
   robust_training: False
+
+  cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/phase_venus_mask/'
+  cell_masks_filetype: '.png'
 
 
 Network:
@@ -54,7 +58,7 @@ Train:
 
 
 PSF:
-  calib_file: '/mnt/sda2/SMLAT/data/KonradPSF/splines/bead_3dcal_venus.mat'
+  calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal_venus.mat'
   psf_size: 41 # kinda irrelevant for spline model psf
   photon_scale: 3000 # i guess max numbeor of photons
   z_scale: 500 # what range of values you want to have z emitters in 

@@ -1,8 +1,12 @@
 import time
 import torch
+import torch.nn as nn
 from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
 import numpy as np
+import pathlib
+from pathlib import Path
+import random
 
 from cellbgnet.generic.emitter import EmitterSet
 from cellbgnet.simulation.psf_kernel import SMAPSplineCoefficient
@@ -206,57 +210,159 @@ class DataSimulator(object):
             self.use_gpu = False
 
         # initialize cubic spline psf
-        self.psf = SMAPSplineCoefficient(self.psf_params['calib_file']).init_spline(
-            xextent=[-0.5, self.img_size-0.5],
-            yextent=[-0.5, self.img_size-0.5],
-            img_shape=[self.img_size, self.img_size],
-            device=self.device,
-            roi_size=None, roi_auto_center=None
-        )
+        if not self.simulation_params['psf_intensity_normalization']:
+            self.psf = SMAPSplineCoefficient(self.psf_params['calib_file']).init_spline(
+                xextent=[-0.5, self.img_size-0.5],
+                yextent=[-0.5, self.img_size-0.5],
+                img_shape=[self.img_size, self.img_size],
+                device=self.device,
+                roi_size=None, roi_auto_center=None
+            )
+        else: # normalize each PSF to 1 before multiplying by photon counts
+            self.psf = SMAPSplineCoefficient(self.psf_params['calib_file']).init_spline(
+                xextent=[-0.5, self.psf_size-0.5],
+                yextent=[-0.5, self.psf_size-0.5],
+                img_shape=[self.psf_size, self.psf_size],
+                device=self.device,
+                roi_size=None, roi_auto_center=None
+            )
+        
+
+        # setup data directory and sampling from mask files
+        if self.simulation_params['train_type'] == 'cells':
+            self.cell_masks_dir = Path(self.simulation_params['cell_masks_dir'])
+            self.cell_mask_filenames = sorted(list(self.cell_masks_dir.glob('*' + self.simulation_params['cell_masks_filetype'])))
+        else:
+            self.cell_masks_dir = None
+            self.cell_mask_filenames = None
+
 
     def look_batch(self):
         imgs_sim, xyzi_gt, s_mask, psf_imgs_gt, locs = self.sampling()
         pass
 
+    # function that takes in a centered psf dot on a small frame and
+    # puts it on bigger images
+    def place_centered_psfs(self, S, psfs_sim, i_vals):
+
+        W = psfs_sim.to(self.device)
+        W /= W.sum(-1).sum(-1)[:, None, None]
+
+        i_vals = i_vals.to(self.device)
+        # each psf dot now has the correct intesity normalized photon counts
+        W *= i_vals
+
+        recs = torch.zeros_like(S)
+        h, w = S.shape[1], S.shape[2]
+
+        s_inds = tuple(S.nonzero().transpose(1, 0))
+        relu = nn.ReLU()
+
+        rc_inds = S.nonzero()[:, 1:]
+
+        row_rl = relu(rc_inds[:, 0] - self.psf_size // 2)
+        col_rl = relu(rc_inds[:, 1] - self.psf_size // 2)
+
+        row_start = relu(self.psf_size // 2 - rc_inds[:, 0])
+        row_end = self.psf_size - relu(rc_inds[:, 0] + self.psf_size - self.psf_size//2 - h)
+
+        col_start = relu(self.psf_size // 2 - rc_inds[:, 1])
+        col_end = self.psf_size - relu(rc_inds[:, 1] + self.psf_size - self.psf_size//2 - w)
+
+
+        for i in range(len(rc_inds)):
+            w_cut = W[i, row_start[i]: row_end[i] , col_start[i]: col_end[i]]
+            #print(i, w_cut.shape, row_rl[i], col_rl[i])
+            recs[s_inds[0][i], row_rl[i]:row_rl[i] + w_cut.shape[0], col_rl[i]:col_rl[i] + w_cut.shape[1]] += w_cut
+        return recs
 
     def simulate_psfs(self, S, X_os, Y_os, Z, I, robust_training=False):
-        batch_size, n_inp, h, w = S.shape[0], S.shape[1], S.shape[2], S.shape[3]
-        xyzi = torch.cat([X_os.reshape([-1, 1, h, w]), Y_os.reshape([-1, 1, h, w]), Z.reshape([-1, 1, h, w]),
-                          I.reshape([-1, 1, h, w])], 1)
-    
-        S = S.reshape([-1, h, w])
-        n_samples = S.shape[0] // xyzi.shape[0]
-        XYZI_rep = xyzi.repeat_interleave(n_samples, 0)
 
-        #print(XYZI_rep.shape)
-        s_inds = tuple(S.nonzero().transpose(1, 0))
-        #print(s_inds)
-        x_os_vals = (XYZI_rep[:, 0][s_inds])[:, None, None]
-        y_os_vals = (XYZI_rep[:, 1][s_inds])[:, None, None]
-        # z_vals will be between -1 and 1, so they will be scaled to nm's here
-        z_vals = self.psf_params['z_scale'] * (XYZI_rep[:, 2][s_inds])[:, None, None]
-        i_vals = self.psf_params['photon_scale'] * (XYZI_rep[:, 3][s_inds])[:, None, None]
-
-        n_emitters = len(s_inds[0])
-        xyz = torch.zeros((n_emitters, 3))
-        xyz[:, 0] = s_inds[1] - x_os_vals[:, 0, 0]
-        xyz[:, 1] = s_inds[2] - y_os_vals[:, 0, 0]
-        xyz[:, 2] = z_vals[:, 0, 0]
-        photon_counts = i_vals[:, 0, 0]
-        frame_ix = s_inds[0]
-
-        em = EmitterSet(xyz=xyz, phot=photon_counts.cpu(), frame_ix=frame_ix.long().cpu(), 
-                        id=torch.arange(n_emitters).long(), xy_unit='px',
-                        px_size=self.psf_params['pixel_size_xy'])
+        if not self.simulation_params['psf_intensity_normalization']:
+            batch_size, n_inp, h, w = S.shape[0], S.shape[1], S.shape[2], S.shape[3]
+            xyzi = torch.cat([X_os.reshape([-1, 1, h, w]), Y_os.reshape([-1, 1, h, w]), Z.reshape([-1, 1, h, w]),
+                            I.reshape([-1, 1, h, w])], 1)
         
+            S = S.reshape([-1, h, w])
+            n_samples = S.shape[0] // xyzi.shape[0]
+            XYZI_rep = xyzi.repeat_interleave(n_samples, 0)
 
-        imgs_sim =  self.psf.forward(em.xyz_px, em.phot, em.frame_ix, ix_low=0, ix_high=batch_size-1)
+            #print(XYZI_rep.shape)
+            s_inds = tuple(S.nonzero().transpose(1, 0))
+            #print(s_inds)
+            x_os_vals = (XYZI_rep[:, 0][s_inds])[:, None, None]
+            y_os_vals = (XYZI_rep[:, 1][s_inds])[:, None, None]
+            # z_vals will be between -1 and 1, so they will be scaled to nm's here
+            z_vals = self.psf_params['z_scale'] * (XYZI_rep[:, 2][s_inds])[:, None, None]
+            i_vals = self.psf_params['photon_scale'] * (XYZI_rep[:, 3][s_inds])[:, None, None]
 
-        torch.clamp_min_(imgs_sim, 0)
-        #print(imgs_sim.shape)
-        imgs_sim = imgs_sim.reshape([batch_size, n_inp, h, w])
+            n_emitters = len(s_inds[0])
+            xyz = torch.zeros((n_emitters, 3))
+            xyz[:, 0] = s_inds[1] - x_os_vals[:, 0, 0]
+            xyz[:, 1] = s_inds[2] - y_os_vals[:, 0, 0]
+            xyz[:, 2] = z_vals[:, 0, 0]
+            photon_counts = i_vals[:, 0, 0]
+            frame_ix = s_inds[0]
 
-        return imgs_sim.to(self.device)
+            em = EmitterSet(xyz=xyz, phot=photon_counts.cpu(), frame_ix=frame_ix.long().cpu(), 
+                            id=torch.arange(n_emitters).long(), xy_unit='px',
+                            px_size=self.psf_params['pixel_size_xy'])
+            
+
+            imgs_sim =  self.psf.forward(em.xyz_px, em.phot, em.frame_ix, ix_low=0, ix_high=batch_size-1)
+
+            torch.clamp_min_(imgs_sim, 0)
+            #print(imgs_sim.shape)
+            imgs_sim = imgs_sim.reshape([batch_size, n_inp, h, w])
+
+            return imgs_sim.to(self.device)
+        else:
+            # place one psf at a time, normalize splinePSF slice to 1, then
+            # multiply by appropriate photon counts
+            print('Doing intesity normalized psf placement')
+            batch_size, n_inp, h, w = S.shape[0], S.shape[1], S.shape[2], S.shape[3]
+            xyzi = torch.cat([X_os.reshape([-1, 1, h, w]), Y_os.reshape([-1, 1, h, w]), Z.reshape([-1, 1, h, w]),
+                I.reshape([-1, 1, h, w])], 1)
+            
+            # extra not for our purpose as we don't model blinking dots for now
+            S = S.reshape([-1, h, w]) 
+            n_samples = S.shape[0] // xyzi.shape[0]
+            XYZI_rep  = xyzi.repeat_interleave(n_samples, 0)
+
+            s_inds = tuple(S.nonzero().transpose(1, 0))
+            
+            x_os_vals = (XYZI_rep[:, 0][s_inds])[:, None, None]
+            y_os_vals = (XYZI_rep[:, 1][s_inds])[:, None, None]
+
+            # z_vals will be between -1 and 1 , so they will have to be in nm's 
+            # for the splinePSF model sampling
+            z_vals = self.psf_params['z_scale'] * (XYZI_rep[:, 2][s_inds])[:, None, None]
+            i_vals = self.psf_params['photon_scale'] * (XYZI_rep[:, 3][s_inds])[:, None, None]
+
+            n_emitters = len(s_inds[0])
+            xyz = torch.zeros((n_emitters, 3))
+            psf_int_vals = torch.ones((n_emitters, ))
+
+            xyz[:, 0] = self.psf_size // 2 - x_os_vals[:, 0, 0]
+            xyz[:, 1] = self.psf_size // 2 - y_os_vals[:, 0, 0]
+            xyz[:, 2] = z_vals[:, 0, 0]
+            # each frame will have one emitter only
+            frame_ix = torch.arange(n_emitters)
+
+            # it is fine to do on CPU as we don't do decode like large pre-sampling batches
+            # it will be slow, but whatever.. 
+            em = EmitterSet(xyz=xyz, phot=psf_int_vals.cpu(), frame_ix=frame_ix.long().cpu(),
+                            id=torch.arange(n_emitters).long(), xy_unit='px',
+                            px_size=self.psf_params['pixel_size_xy'])
+            
+            # not ix_high is n_emitters and not batch_size, as only one emitter is put on one frame
+            psfs_sim = self.psf.forward(em.xyz_px, em.phot, em.frame_ix, ix_low=0, ix_high=n_emitters-1)
+
+            imgs_sim = self.place_centered_psfs(S, psfs_sim, i_vals)
+            torch.clamp_min_(imgs_sim, 0)
+            imgs_sim = imgs_sim.reshape([batch_size, n_inp, h, w])
+
+            return imgs_sim.to(self.device)
 
     def simulate_noise(self, imgs_sim, add_noise=True):
         
@@ -332,7 +438,7 @@ class DataSimulator(object):
 
         """
         blink_p = prob_map
-        blink_p = blink_p.reshape(1, 1, blink_p.shape[-2], blink_p.shape[-1]).repeat_interleave(batch_size, 0)
+        blink_p = blink_p.reshape(blink_p.shape[0], 1, blink_p.shape[1], blink_p.shape[2])
 
         # Every pixel has a probability blink_p of having a molecule, following binonmial distribution
         locs1 = torch.distributions.Binomial(1, blink_p).sample().to(self.device)
@@ -374,7 +480,7 @@ class DataSimulator(object):
 
     def simulate_data(self, prob_map, batch_size=1, local_context=False,
             photon_filter=False, photon_filter_threshold=100, P_locs_cse=False,
-            iter_num=None, train_size=128, robust_training=False):
+            iter_num=None, train_size=128, robust_training=False, cell_masks=None):
         """
         Main function for simulating SMLM images. All different kinds of simulation modes
         get handled slightly differently
@@ -398,6 +504,11 @@ class DataSimulator(object):
             
             train_size (int): Size of the images seen by the net
             robust_training (bool): Not used for now
+
+
+            cell_masks (np.ndarray): cell masks to be used for different noise models of the
+                                     background. They are not used for PSF placement as it is 
+                                     covered in the prob_map
 
         Returns:
         ---------

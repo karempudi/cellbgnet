@@ -1,7 +1,67 @@
 import torch.nn as nn
 import numpy as np
 import torch
+import random
+from skimage.io import imread
 from cellbgnet.utils.hardware import cpu, gpu
+
+def generate_probmap_cells(image, batch_size, train_size, density_in_cells, density_if_no_cells, margin_empty):
+    """
+    Generate batch_size number of random crops from one image of size train_size
+    
+    Arguments:
+    -----------
+        image: a numpy array of cell mask (if binary mask is given, it will be labelled)
+        
+        batch_size (int): number of random crops to generate from one image
+        
+        train_size (int): size of the crop, it is a square image by default
+        
+        density_in_cells (int): pixel probability that a dot is present cell. (2 dots / 320 pixels)
+        
+        density_if_no_cells (int): total number of dots per frame if no cells were sampled in the FOV,
+                                   typically 10 as default in parameter file
+        
+    Returns:
+    --------
+        prob_map (np.ndarray): a numpy array with appropriate probmap set 
+                              for each image
+        
+    """
+    # if bool, then binary mask is given, so label it.
+    if (image.dtype == 'bool'):
+        image = label(image)
+    
+    # generate corners for random cropping.
+    height, width = image.shape
+    x = np.random.randint(low=0, high=width - train_size, size=batch_size)
+    y = np.random.randint(low=0, high=height - train_size, size=batch_size)
+    
+    prob_map = np.zeros([batch_size, train_size, train_size])
+    cell_masks = np.zeros([batch_size, train_size, train_size])
+    for i in range(prob_map.shape[0]):
+        prob_map[i] = image[y[i]: y[i]+train_size, x[i]:x[i]+train_size] > 0
+        cell_masks[i] = image[y[i]: y[i]+train_size, x[i]:x[i]+train_size]
+        cell_masks[i][:int(margin_empty * train_size), :] = 0
+        cell_masks[i][int((1-margin_empty) * train_size):, :] = 0
+        cell_masks[i][:, :int(margin_empty * train_size)] = 0
+        cell_masks[i][:, int((1-margin_empty) * train_size):] = 0
+        
+        prob_map[i][:int(margin_empty * train_size), :] = 0
+        prob_map[i][int((1-margin_empty) * train_size):, :] = 0
+        prob_map[i][:, :int(margin_empty * train_size)] = 0
+        prob_map[i][:, int((1-margin_empty) * train_size):] = 0
+        #prob_map[i][int(margin_empty * train_size) : int((1 - margin_empty) * train_size),
+        #            int(margin_empty * train_size) : int((1 - margin_empty) * train_size)]
+        if np.sum(prob_map[i]) == 0:
+            #print('one empty')
+            prob_map[i][int(margin_empty * train_size) : int((1 - margin_empty) * train_size),
+                        int(margin_empty * train_size) : int((1 - margin_empty) * train_size)] += 1
+            prob_map[i] = prob_map[i]/ prob_map[i].sum() * density_if_no_cells
+        else:
+            prob_map[i] = prob_map[i] * density_in_cells
+
+    return prob_map, cell_masks
 
 class TrainFuncs:
 
@@ -19,8 +79,8 @@ class TrainFuncs:
         """
         density = simulation_params['density']
         # probability map describing probability of a spot
-        if not simulation_params['use_cell_bg']:
-            prob_map = np.zeros([1, train_size, train_size])
+        if simulation_params['train_type'] != 'cells':
+            prob_map = np.zeros([self.batch_size, train_size, train_size])
             # remove the the margins
             prob_map[0, int(simulation_params['margin_empty'] * train_size):
                 int((1 - simulation_params['margin_empty']) * train_size),
@@ -36,12 +96,38 @@ class TrainFuncs:
                 photon_filter_threshold=self.train_params['photon_filter_threshold'],
                 P_locs_cse=self.train_params['P_locs_cse'],
                 iter_num=self._iter_count, train_size=train_size,
-                robust_training=self.data_generator.simulation_params['robust_training']
+                robust_training=self.data_generator.simulation_params['robust_training'],
+                cell_masks=None
             )
             cell_bg_coord = None
         else:
-            # write stuff for using cell_bg_coord and set cell_bg_coord to pass on to inference
-            pass
+            # now you are training on cells.
+            # read one image from the directory and load a random mask and generate probability map
+            # to feed to the simulation of data.
+
+            random_filename = random.choice(self.data_generator.cell_mask_filenames)
+            random_cell_mask = imread(random_filename)
+            print('sampling random filename', random_filename)
+            non_cell_density = self.simulation_params['non_cell_density']
+
+            # generate probabilty map and cell mask crop from this one random cell mask
+            prob_map, cell_masks_batch = generate_probmap_cells(random_cell_mask, self.batch_size, 
+                                                train_size, density, non_cell_density,
+                                                simulation_params['margin_empty']) 
+
+            # bg returned by datasimulator is just the psf and not the bg
+            imgs_sim, xyzi_gt, s_mask, psf_imgs_gt, locs = self.data_generator.simulate_data( 
+                prob_map=gpu(prob_map), batch_size=self.batch_size,
+                local_context=self.local_context,
+                photon_filter=self.train_params['photon_filter'],
+                photon_filter_threshold=self.train_params['photon_filter_threshold'],
+                P_locs_cse=self.train_params['P_locs_cse'],
+                iter_num=self._iter_count, train_size=train_size,
+                robust_training=self.data_generator.simulation_params['robust_training'],
+                cell_masks=cell_masks_batch
+            )
+            cell_bg_coord = None
+ 
 
         P, xyzi_est, xyzi_sig, psf_imgs_est = self.inferring(imgs_sim, cell_bg_coord)
 
@@ -70,7 +156,7 @@ class TrainFuncs:
         train_size = simulation_params['train_size']
         density = simulation_params['density']
 
-        if not simulation_params['use_cell_bg']:
+        if simulation_params['train_type'] != 'cells':
             prob_map = np.zeros([1, train_size, train_size])
             # remove the the margins
             prob_map[0, int(simulation_params['margin_empty'] * train_size):

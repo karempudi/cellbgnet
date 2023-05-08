@@ -69,6 +69,8 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
 
         # file to save
         self.filename = param.InOut.filename
+
+
         # Done initialization
 
     def init_recorder(self):
