@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import random
 from skimage.io import imread
+from skimage import segmentation
 from cellbgnet.utils.hardware import cpu, gpu
 
 def generate_probmap_cells(image, batch_size, train_size, density_in_cells, density_if_no_cells, margin_empty):
@@ -107,6 +108,7 @@ class TrainFuncs:
 
             random_filename = random.choice(self.data_generator.cell_mask_filenames)
             random_cell_mask = imread(random_filename)
+            random_cell_mask = segmentation.expand_labels(random_cell_mask, distance=1)
             print('sampling random filename', random_filename)
             non_cell_density = self.simulation_params['non_cell_density']
 

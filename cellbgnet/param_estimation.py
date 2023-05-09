@@ -160,15 +160,21 @@ def chromo_edt_mean_variance_inside(fluor_img, cellseg_mask, bg_cutoff_percentil
 
     dists = edt.edt(cellseg_mask)
     min_edt, max_edt = int(dists.min()), int(min(dists.max(), maximum_edt))
+    mean_noise_map = {}
+    stddev_noise_map = {}
+    counts_noise_map = {}
     edt_noise_map = {}
     for i in range(min_edt+1, max_edt+1, 1):
         edt_i = bg_removed_dots[dists==i]
         edt_i = edt_i[edt_i > 0]
-        edt_noise_map[i] = {
-            'mean': np.mean(edt_i),
-            'stddev': np.std(edt_i),
-            'n_datapoints': len(edt_i)
-        }
+        
+        mean_noise_map[i] = np.mean(edt_i)
+        stddev_noise_map[i] = np.std(edt_i)
+        counts_noise_map[i] =  len(edt_i)
+
+    edt_noise_map['mean'] = mean_noise_map
+    edt_noise_map['stddev'] = stddev_noise_map
+    edt_noise_map['counts'] = counts_noise_map
 
     return edt_noise_map
 
