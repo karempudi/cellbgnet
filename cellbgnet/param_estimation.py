@@ -7,6 +7,7 @@ import seaborn as sns
 import scipy.stats
 import edt
 from skimage import segmentation
+from skimage.io import imread
 
 sns.set_style('white')
 
@@ -17,7 +18,7 @@ sns.set_style('white')
 
 
 def chromo_mean_var_bg_outside(fluor_img, cellseg_mask, dilate=True, roi=None,
-                 plot=False, dilate_px=1):
+                 plot=False, dilate_px=1, return_alpha_beta=False):
     """
     Function to evaluate mean and variance of the pixels outside the cells
     and fit gamma distribution to the pixels
@@ -30,6 +31,9 @@ def chromo_mean_var_bg_outside(fluor_img, cellseg_mask, dilate=True, roi=None,
         roi (list of 4 ints): rchw of the ROI you want to calculate incase cell masks
                               are not that great in some regions
         plot (bool): Plot the fitted gamma distribution
+
+        return_alpha_beta (bool): function returns alpha and beta instead of mean and
+                    variance of the gamma distribution
 
     Returns:
     ----------
@@ -66,7 +70,10 @@ def chromo_mean_var_bg_outside(fluor_img, cellseg_mask, dilate=True, roi=None,
         plt.legend()
         plt.show()
     
-    return fit_alpha * fit_beta, fit_alpha * fit_beta * fit_beta
+    if return_alpha_beta:
+        return fit_alpha, fit_beta
+    else:
+        return fit_alpha * fit_beta, fit_alpha * fit_beta * fit_beta
 
 def chromo_mean_var_bg_inside(fluor_img, cellseg_mask, bg_cutoff_percentile=75, dilate=True,
                     roi=None, plot=False, dilate_px=1):
@@ -123,7 +130,7 @@ def chromo_mean_var_bg_inside(fluor_img, cellseg_mask, bg_cutoff_percentile=75, 
 
 
 def chromo_edt_mean_variance_inside(fluor_img, cellseg_mask, bg_cutoff_percentile=75, dilate=True,
-                        dilate_px=1, roi=None, maximum_edt=7, plot=False):
+                        dilate_px=1, roi=None, maximum_edt=7, plot=False, return_values=False):
     if roi is not None:
         cellseg_mask = cellseg_mask[roi[0]: roi[0] + roi[2], roi[1]: roi[1] + roi[3]]
         fluor_img = fluor_img[roi[0]: roi[0] + roi[2], roi[1]: roi[1] + roi[3]]
@@ -170,16 +177,22 @@ def chromo_edt_mean_variance_inside(fluor_img, cellseg_mask, bg_cutoff_percentil
         edt_i = bg_removed_dots[dists==i]
         edt_i = edt_i[edt_i > 0]
 
-        fit_alpha_edt, fit_loc_edt, fit_beta_edt = scipy.stats.gamma.fit(edt_i, floc=-1.5)
-        fitted_dist_params[i] = {
-            'alpha': fit_alpha_edt,
-            'loc': fit_loc_edt, 
-            'beta': fit_beta_edt,
-        }
-        mean_noise_map[i] = np.mean(edt_i)
-        stddev_noise_map[i] = np.std(edt_i)
-        counts_noise_map[i] =  len(edt_i)
-        edt_values[i] = edt_i
+        if len(edt_i) > 0:
+            fit_alpha_edt, fit_loc_edt, fit_beta_edt = scipy.stats.gamma.fit(edt_i, floc=-1.5)
+            fitted_dist_params[i] = {
+                'alpha': fit_alpha_edt,
+                'loc': fit_loc_edt, 
+                'beta': fit_beta_edt,
+            }
+
+            mean_noise_map[i] = np.mean(edt_i)
+            stddev_noise_map[i] = np.std(edt_i)
+            counts_noise_map[i] =  len(edt_i)
+
+        if return_values == True:
+            edt_values[i] = edt_i
+        else:
+            edt_values[i] = None
 
     edt_noise_map['mean'] = mean_noise_map
     edt_noise_map['stddev'] = stddev_noise_map
@@ -188,6 +201,62 @@ def chromo_edt_mean_variance_inside(fluor_img, cellseg_mask, bg_cutoff_percentil
     edt_noise_map['fits'] = fitted_dist_params
 
     return edt_noise_map
+
+def get_full_edt_maps(masks_dir, fluor_dir, save_filename=None,
+                mask_fileformat='.png', fluor_fileformat='.tiff',
+                roi=[170, 420, 720, 720], edt_min_max=[1, 7]):
+    """
+    Gets edt maps that you can save and reload them back later.
+    
+    Save as pickle file if given a filename
+
+    Arguments:
+        roi: for bg, we use this roi rchw notation to get central region
+                incase some cells are not segmented at the edges
+    """
+    if type(masks_dir) == str:
+        masks_dir = Path(masks_dir)
+    if type(fluor_dir) == str:
+        fluor_dir = Path(fluor_dir)
+
+    mask_filenames = sorted(list(masks_dir.glob('*' + mask_fileformat)))
+    fluor_filenames = sorted(list(fluor_dir.glob('*' + fluor_fileformat)))
+    
+    # first we collect all the background values
+    chip_bg_alphas = []
+    chip_bg_betas = []
+    edt_fit_pool_alphas = {}
+    edt_fit_pool_betas  = {}
+    for edt_val in range(edt_min_max[0], edt_min_max[1]+1):
+        edt_fit_pool_alphas[edt_val] = []
+        edt_fit_pool_betas[edt_val] = []
+    
+    for index in range(len(mask_filenames)):
+        mask_img = imread(mask_filenames[index])
+        fluor_img = imread(fluor_filenames[index])
+        alpha_bg, beta_bg = chromo_mean_var_bg_outside(fluor_img, mask_img, 
+                            plot=False, roi=roi, return_alpha_beta=True)
+
+        chip_bg_alphas.append(alpha_bg)
+        chip_bg_betas.append(beta_bg)
+        try:
+            edt_data = chromo_edt_mean_variance_inside(fluor_img, mask_img, plot=False, return_values=False)
+            for edt_val in range(edt_min_max[0], edt_min_max[1]):
+                if edt_data['fits'][edt_val]['alpha'] != float('nan'):
+                    edt_fit_pool_alphas[edt_val].append(edt_data['fits'][edt_val]['alpha'])
+                if edt_data['fits'][edt_val]['beta'] != float('nan'):
+                    edt_fit_pool_betas[edt_val].append(edt_data['fits'][edt_val]['beta'])
+ 
+        except Exception as e:
+            print(f"found some nan probably as file number: {index}")
+            print(f"Exception: {e}")
+        print(index, "Done")
+    return np.mean(chip_bg_alphas), np.mean(chip_bg_betas), edt_fit_pool_alphas, edt_fit_pool_betas
+    
+
+
+    # second we collect all the values from the cells
+
 
 ###################################################
 ############# Replisome data functions ############
