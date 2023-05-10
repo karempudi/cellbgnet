@@ -60,9 +60,9 @@ def chromo_mean_var_bg_outside(fluor_img, cellseg_mask, dilate=True, roi=None,
 
     if plot:
         fig, ax = plt.subplots()
-        ax.hist(collect_bg_only, bins=np.linspace(low, high), histtype='step', label='data')
+        ax.hist(collect_bg_only, bins=np.arange(low, high), histtype='step', label='data')
         ax.hist(np.random.gamma(shape=fit_alpha, scale=fit_beta, size=len(collect_bg_only)+0),
-                        bins=np.linspace(low, high), histtype='step', label='fit')
+                        bins=np.arange(low, high), histtype='step', label='fit')
         plt.legend()
         plt.show()
     
@@ -165,10 +165,17 @@ def chromo_edt_mean_variance_inside(fluor_img, cellseg_mask, bg_cutoff_percentil
     counts_noise_map = {}
     edt_noise_map = {}
     edt_values = {}
+    fitted_dist_params = {}
     for i in range(min_edt+1, max_edt+1, 1):
         edt_i = bg_removed_dots[dists==i]
         edt_i = edt_i[edt_i > 0]
 
+        fit_alpha_edt, fit_loc_edt, fit_beta_edt = scipy.stats.gamma.fit(edt_i, floc=-1.5)
+        fitted_dist_params[i] = {
+            'alpha': fit_alpha_edt,
+            'loc': fit_loc_edt, 
+            'beta': fit_beta_edt,
+        }
         mean_noise_map[i] = np.mean(edt_i)
         stddev_noise_map[i] = np.std(edt_i)
         counts_noise_map[i] =  len(edt_i)
@@ -178,6 +185,7 @@ def chromo_edt_mean_variance_inside(fluor_img, cellseg_mask, bg_cutoff_percentil
     edt_noise_map['stddev'] = stddev_noise_map
     edt_noise_map['counts'] = counts_noise_map
     edt_noise_map['values'] = edt_values
+    edt_noise_map['fits'] = fitted_dist_params
 
     return edt_noise_map
 

@@ -70,7 +70,8 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
         # file to save
         self.filename = param.InOut.filename
 
-
+        # initialize sliding windows for training on one tile of size train_size typically 128x128
+        self.init_sliding_window()
         # Done initialization
 
     def init_recorder(self):
@@ -91,6 +92,46 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
         self.recorder['eff_lat'] = collections.OrderedDict([])
         self.recorder['eff_ax'] = collections.OrderedDict([])
         self.recorder['eff_3d'] = collections.OrderedDict([])
+
+    def init_sliding_window(self):
+        """
+        Initialize sliding windows, a sub area of the full camera chip size that will be used
+
+        """
+        # we use data_generator to be sure that it is initialized before you call
+        # this sliding window intialization
+        train_size = self.data_generator.simulation_params['train_size']
+        margin_empty = self.data_generator.simulation_params['margin_empty']
+        camera_chip_size = self.data_generator.camera_chip_size
+
+        vacuum_size = int(np.ceil(train_size * margin_empty))
+        overlap = 2 * vacuum_size
+
+        row_num = int(np.ceil((camera_chip_size[0] - overlap) / (train_size - overlap)))
+        column_num = int(np.ceil((camera_chip_size[1] - overlap) / (train_size - overlap)))
+
+        sliding_win = []
+
+        for iter_num in range(0, row_num * column_num):
+            # check if the size is out of bounds of the camera ROI size
+            if iter_num % column_num * (train_size - overlap) + train_size <= camera_chip_size[1]:
+                x_field = iter_num % column_num * (train_size - overlap)
+            else:
+                x_field = camera_chip_size[1] - train_size
+            
+            if iter_num // column_num % row_num * (train_size - overlap) + train_size <= camera_chip_size[0]:
+                y_field = iter_num // column_num % row_num * (train_size - overlap)
+            else:
+                y_field = camera_chip_size[0] - train_size
+            
+            sliding_win.append([x_field, x_field + train_size - 1, 
+                                y_field, y_field + train_size - 1])
+
+        self.data_generator.sliding_win = sliding_win
+
+        print('training sliding windows on camera chip:')
+        for i in range(0, len(sliding_win)):
+            print(f"Area num: {i}, field_xy: {sliding_win[i]}")
 
 
     def init_eval_data(self):

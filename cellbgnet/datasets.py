@@ -204,6 +204,7 @@ class DataSimulator(object):
         self.hardware_params = hardware_params
         self.device = hardware_params['device_simulation']
         self.img_size = self.simulation_params['train_size']
+        self.camera_chip_size = self.simulation_params['camera_chip_size']
         if self.device[:4] == 'cuda':
             self.use_gpu = True
         else:

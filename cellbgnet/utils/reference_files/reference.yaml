@@ -11,8 +11,11 @@ Simulation:
     - -1
     - 1
   survival_prob: # only used if there is local context, so in our case it is not used
-  min_photon: 0.25 # intensity distributions sampled from (min_ph, 1)
+  min_photon: 0.4 # intensity distributions sampled from (min_ph, 1)
   camera: 'sCMOS'
+  camera_chip_size:
+    - 1041
+    - 1302
   perlin_noise: False
   perlin_noise_factor: 0.2 # what fraction of bg photons you want to multiply to get PN noise map
   perlin_noise_res: 64
