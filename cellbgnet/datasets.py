@@ -216,7 +216,7 @@ class DataSimulator(object):
                 xextent=[-0.5, self.img_size-0.5],
                 yextent=[-0.5, self.img_size-0.5],
                 img_shape=[self.img_size, self.img_size],
-                device=self.device,
+                device='cpu',
                 roi_size=None, roi_auto_center=None
             )
         else: # normalize each PSF to 1 before multiplying by photon counts
@@ -224,7 +224,7 @@ class DataSimulator(object):
                 xextent=[-0.5, self.psf_size-0.5],
                 yextent=[-0.5, self.psf_size-0.5],
                 img_shape=[self.psf_size, self.psf_size],
-                device=self.device,
+                device='cpu',
                 roi_size=None, roi_auto_center=None
             )
         
