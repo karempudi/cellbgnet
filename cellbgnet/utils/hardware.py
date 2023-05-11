@@ -3,12 +3,12 @@ from typing import Tuple, Union
 import torch
 import numpy as np
 
-def gpu(x):
+def gpu(x, device='cuda:0'):
     # send a numpy array or torch tensor on gpu
     if isinstance(x, np.ndarray):
         return torch.cuda.FloatTensor(x.astype('float32'))
     else:
-        return torch.cuda.FloatTensor(x)
+        return torch.cuda.FloatTensor(x.cuda())
 
 def cpu(x):
     # make any tensor a numpy array

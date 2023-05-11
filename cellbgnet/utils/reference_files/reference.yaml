@@ -19,17 +19,21 @@ Simulation:
   perlin_noise: False
   perlin_noise_factor: 0.2 # what fraction of bg photons you want to multiply to get PN noise map
   perlin_noise_res: 64
-  baseline: 100
+  baseline: 103.0
   bg_values: 115.0 # background value estimated from the data 
-  e_per_adu: 0.25 # e per adu of the camera
+  e_per_adu: 0.40 # e per adu of the camera
   qe: 0.95 # quantum efficiency
   spurious_c: 0.000 # not sure what this is
-  sig_read: 1.2 # sigma of the read noise in electrons
+  #sig_read: 2.07 # sigma of the read noise in electrons, median value
+  # file or single value should be given
+  sig_read: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/RN_e_venus.tiff'
   robust_training: False
 
   cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/phase_venus_mask/'
   cell_masks_filetype: '.png'
   edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/edt_noise.pkl'
+  min_edt: 0
+  max_edt: 6
 
 
 Network:
@@ -71,13 +75,20 @@ PSF:
     - 65
 
 Evaluation:
-  #ground_truth: True
-  number_images: 4096 # number of images to do eval on
-  eval_size: 128 # size of the evaluation image
-  molecules_per_img: 10 # density used in the prob_map creation before sampling coordinates
+  number_images: 30  # number of images, full camera chip is used
+  use_cell_masks: True # if true masks will be chosen at random
+  density_in_cells: 0.003125 # 
+  # masks directory used to sample number_cell_masks images
+  cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/phase_venus_mask/'
+  cell_masks_filetype: '.png'
+  # pre-computed edt_noise map to generate distributions of bg photons
+  edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/edt_noise.pkl'
+
+  eval_size: #xy, not rc, same as the camera_chip_size
+    - 1041 # y
+    - 1302 # x 
+  molecules_per_img: 800 # density used in the prob_map creation before sampling coordinates. No cell masks used in this case
   margin_empty: 0.05 # leave out the boundary
-  use_cellbg: False
-  cellbg_dir: None  # directory of mask you would like to use for cell bg coord
   candidate_threshold: 0.3
   nms_threshold: 0.7
   print_result: False

@@ -7,6 +7,9 @@ import numpy as np
 import pathlib
 from pathlib import Path
 import random
+from skimage.io import imread
+import edt
+import pickle
 
 from cellbgnet.generic.emitter import EmitterSet
 from cellbgnet.simulation.psf_kernel import SMAPSplineCoefficient
@@ -195,6 +198,12 @@ class SMLMTrainDataset(SMLMDataset):
         return self._return_sample(frames, target, weight, tar_emitter)
 
 
+def map_masks(dists, map_values):
+    dists_copy = np.copy(dists)
+    for edt_val, value in map_values.items():
+        dists_copy[dists == edt_val] = value
+    return dists_copy
+
 class DataSimulator(object):
 
     def __init__(self, psf_params, simulation_params, hardware_params):
@@ -237,6 +246,18 @@ class DataSimulator(object):
             self.cell_masks_dir = None
             self.cell_mask_filenames = None
 
+        # read noise map either from file or a single fixed value
+        if type(self.simulation_params['sig_read']) == str:
+            self.RN = imread(self.simulation_params['sig_read'])
+        else:
+            self.RN = self.simulation_params['sig_read']
+        
+        # reading the edt noise map if you are training for cells
+        if self.simulation_params['train_type'] == 'cells':
+            with open(Path(self.simulation_params['edt_noise_map_path']), 'rb') as fp:
+                self.edt_noise_map = pickle.load(fp)
+        else:
+            self.edt_noise_map = None
 
     def look_batch(self):
         imgs_sim, xyzi_gt, s_mask, psf_imgs_gt, locs = self.sampling()
@@ -320,7 +341,7 @@ class DataSimulator(object):
         else:
             # place one psf at a time, normalize splinePSF slice to 1, then
             # multiply by appropriate photon counts
-            print('Doing intesity normalized psf placement')
+            #print('Doing intesity normalized psf placement')
             batch_size, n_inp, h, w = S.shape[0], S.shape[1], S.shape[2], S.shape[3]
             xyzi = torch.cat([X_os.reshape([-1, 1, h, w]), Y_os.reshape([-1, 1, h, w]), Z.reshape([-1, 1, h, w]),
                 I.reshape([-1, 1, h, w])], 1)
@@ -365,14 +386,25 @@ class DataSimulator(object):
 
             return imgs_sim.to(self.device)
 
-    def simulate_noise(self, imgs_sim, add_noise=True):
+    def simulate_noise(self, imgs_sim, field_xy, cells_bg_alpha=None,
+                       cells_bg_beta = None, add_noise=True):
         
         if self.simulation_params['camera'] == 'sCMOS':
 
-            bg_photons = ((self.simulation_params['bg_values'] - self.simulation_params['baseline']) * self.simulation_params['e_per_adu']) / self.simulation_params['qe']
+            # generate background photons from cells using sampled technique
+            if (cells_bg_alpha is not None)  and (cells_bg_beta is not None):
+                alpha_t = torch.from_numpy(cells_bg_alpha)
+                beta_t = 1.0/torch.from_numpy(cells_bg_beta)
 
-            if bg_photons < 0:
-                print('Converted bg_photons is less than 0, please check parameters, bg_values and baseline')
+                bg_sampled_ADU = torch.distributions.gamma.Gamma(concentration=alpha_t, rate=beta_t).sample()
+                bg_photons = ((bg_sampled_ADU - self.simulation_params['baseline']) * self.simulation_params['e_per_adu'])/ self.simulation_params['qe']
+                bg_photons = bg_photons[:, None]
+                bg_photons = torch.clamp(bg_photons, min=0.0)
+            else:
+                bg_photons = ((self.simulation_params['bg_values'] - self.simulation_params['baseline']) * self.simulation_params['e_per_adu']) / self.simulation_params['qe']
+
+            #if bg_photons.a<  0:
+            #    print('Converted bg_photons is less than 0, please check parameters, bg_values and baseline')
 
             if self.simulation_params['perlin_noise']:
                 size_x, size_y = imgs_sim.shape[-2], imgs_sim.shape[-1]
@@ -400,17 +432,19 @@ class DataSimulator(object):
                     bg_photons = gpu(bg_photons)
 
             # add bg_photons on top of psf simulated images
+            if self.use_gpu:
+                bg_photons = gpu(bg_photons)
             imgs_sim += bg_photons 
 
             if add_noise:
                 imgs_sim = torch.distributions.Poisson(
                     imgs_sim * self.simulation_params['qe']  + self.simulation_params['spurious_c']).sample()
                 
-                if type(self.simulation_params['sig_read']) == np.ndarray:
-                    print("CMOS camera variance map needed ... option not added yet")
+                if type(self.RN) == np.ndarray:
+                    RN = gpu(self.RN[field_xy[2] : field_xy[3]+1, field_xy[0]: field_xy[1] + 1] + 1e-6)
+                    #print(f"Using read noise map for field: {field_xy}")
                 else:
-                    # read noise
-                    RN = self.simulation_params['sig_read']
+                    RN = self.RN
 
                 zeros = torch.zeros_like(imgs_sim)
                 readout_noise = torch.distributions.Normal(zeros, zeros + RN).sample()
@@ -474,8 +508,17 @@ class DataSimulator(object):
         y_os *= locs
         z *= locs
         ints *= locs
+
+        # when generating training data we only use train_size * train_size image
+        if prob_map.shape[1] == prob_map.shape[2] == train_size:
+            index  = iter_num % len(self.sliding_win)
+            # get the fov of the train size from the full camera chip
+            field_xy = torch.tensor(self.sliding_win[index])
+        # When we use the full camera chip
+        else:
+            field_xy = torch.tensor([0, self.camera_chip_size[1] - 1, 0, self.camera_chip_size[0] - 1])
         
-        return locs, x_os, y_os, z, ints
+        return locs, x_os, y_os, z, ints, field_xy
 
 
 
@@ -534,7 +577,7 @@ class DataSimulator(object):
 
         # do the sampling and construct what is needed. 
         # S is locs, X_os, Y_os are offsets, Z and I are also scaled values in appropriate ranges
-        S, X_os, Y_os, Z, I = self.sampling(batch_size=batch_size, prob_map=prob_map, local_context=local_context,
+        S, X_os, Y_os, Z, I, field_xy = self.sampling(batch_size=batch_size, prob_map=prob_map, local_context=local_context,
                                     iter_num=iter_num, train_size=train_size)
 
         # if there are emitters sampled on the image
@@ -590,7 +633,20 @@ class DataSimulator(object):
         #psf_imgs_gt = imgs_sim.clone()
         psf_imgs_gt = psf_imgs_gt[:, 1] if local_context else psf_imgs_gt[:, 0]
 
-        imgs_sim = self.simulate_noise(imgs_sim)
+        # 
+        
+        if cell_masks is not None:
+            dists = np.zeros_like(cell_masks, dtype='float32')
+            for i in range(len(cell_masks)):
+                dists[i] = edt.edt(cell_masks[i])
+                dists[i] = np.clip(dists[i], self.simulation_params['min_edt'], self.simulation_params['max_edt'])
+            cells_bg_alpha = map_masks(dists, self.edt_noise_map['alphas'])
+            cells_bg_beta = map_masks(dists, self.edt_noise_map['betas'])
+        else:
+            cells_bg_alpha = None
+            cells_bg_beta = None
+
+        imgs_sim = self.simulate_noise(imgs_sim, field_xy, cells_bg_alpha, cells_bg_beta)
 
         # only return the ground truth if photon > threshold
         if photon_filter:

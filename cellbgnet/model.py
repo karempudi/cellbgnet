@@ -4,6 +4,11 @@ import time
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+import pathlib
+from pathlib import Path
+import random
+from skimage.io import imread
+from tqdm import tqdm
 
 from cellbgnet.networks import UnetBGConv, OutnetBGConv
 from cellbgnet.train_loss_infer import TrainFuncs, LossFuncs, InferFuncs
@@ -135,25 +140,39 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
 
 
     def init_eval_data(self):
-        eval_size_x = self.evaluation_params['eval_size']
-        eval_size_y = self.evaluation_params['eval_size']
-        density = self.evaluation_params['molecules_per_img']
+        eval_size_x = self.evaluation_params['eval_size'][1]
+        eval_size_y = self.evaluation_params['eval_size'][0]
+        if self.evaluation_params['use_cell_masks'] == False:
+            density = self.evaluation_params['molecules_per_img']
 
-        # Set the probablity map 
-        prob_map = np.ones([1, eval_size_x, eval_size_y])
-        # no molecules on the boundary
-        prob_map[0, int(self.evaluation_params['margin_empty'] * eval_size_y): int((1 - self.evaluation_params['margin_empty']) * eval_size_y),
-                    int(self.evaluation_params['margin_empty'] * eval_size_x): int((1 - self.evaluation_params['margin_empty']) * eval_size_x)] += 1
-        prob_map = (prob_map / prob_map.sum()) * density
+            # Set the probablity map 
+            number_images = self.evaluation_params['number_images']
+            prob_map = np.ones([number_images, eval_size_x, eval_size_y])
+            # no molecules on the boundary
+            prob_map[:, int(self.evaluation_params['margin_empty'] * eval_size_y): int((1 - self.evaluation_params['margin_empty']) * eval_size_y),
+                        int(self.evaluation_params['margin_empty'] * eval_size_x): int((1 - self.evaluation_params['margin_empty']) * eval_size_x)] += 1
+            for i in range(prob_map.shape[0]):
+                prob_map[i] = (prob_map[i] / prob_map[i].sum()) * density
+        else:
+            # load number_images from the cell masks dir to generate probability map
+            cell_masks_dir = Path(self.evaluation_params['cell_masks_dir'])
+            cell_mask_filenames = sorted(list(cell_masks_dir.glob('*' + self.evaluation_params['cell_masks_filetype'])))
+            random_filenames = random.choices(cell_mask_filenames, k=self.evaluation_params['number_images'])
+            cell_masks_batch = []
+            for filename in random_filenames:
+                cell_masks_batch.append(imread(filename))
+            cell_masks_batch = np.stack(cell_masks_batch)
+
+            prob_map = (cell_masks_batch > 0) * self.evaluation_params['density_in_cells']
 
         ground_truth = []
         eval_imgs = np.zeros([1, eval_size_y, eval_size_x])
 
-        for j in range(self.evaluation_params['number_images']):
+        for j in tqdm(range(self.evaluation_params['number_images']), desc='Eval image generation'):
             imgs_sim, xyzi_mat, s_mask, psf_est, locs = self.data_generator.simulate_data(
-                    prob_map=gpu(prob_map), batch_size=1, local_context=self.local_context,
+                    prob_map=gpu(prob_map[j][None, :]), batch_size=1, local_context=self.local_context,
                     photon_filter=False, photon_filter_threshold=0, P_locs_cse=False,
-                    iter_num=self._iter_count, train_size=eval_size_x)
+                    iter_num=self._iter_count, train_size=eval_size_x, cell_masks=cell_masks_batch[j][np.newaxis, :])
             imgs_tmp = cpu(imgs_sim)[:, 1] if self.local_context else cpu(imgs_sim)[:, 0]
             eval_imgs = np.concatenate((eval_imgs, imgs_tmp), axis = 0)
             
@@ -165,7 +184,6 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
                         cpu(xyzi_mat[0, i, 2]) * self.data_generator.psf_params['z_scale'],
                         cpu(xyzi_mat[0, i, 3]) * self.data_generator.psf_params['photon_scale']]
                 )
-            print('{}{}{}'.format('\rAlready simulated ', j+1, ' evaluation images'), end='')
 
         self.evaluation_params['eval_imgs'] = eval_imgs[1:]
         self.evaluation_params['ground_truth'] = ground_truth
@@ -181,6 +199,7 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
         plt.title('the first image of eval set,check the background')
         # plt.tight_layout()
         plt.show()
+
 
     def eval_func(self, candidate_threshold=0.3, nms_threshold=0.7, print_result=False):
         if self.evaluation_params['ground_truth'] is not None:
