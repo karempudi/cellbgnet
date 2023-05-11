@@ -29,6 +29,7 @@ Simulation:
 
   cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/phase_venus_mask/'
   cell_masks_filetype: '.png'
+  edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/edt_noise.pkl'
 
 
 Network:

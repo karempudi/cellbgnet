@@ -8,6 +8,9 @@ import scipy.stats
 import edt
 from skimage import segmentation
 from skimage.io import imread
+import json
+import pickle
+from tqdm import tqdm
 
 sns.set_style('white')
 
@@ -231,7 +234,7 @@ def get_full_edt_maps(masks_dir, fluor_dir, save_filename=None,
         edt_fit_pool_alphas[edt_val] = []
         edt_fit_pool_betas[edt_val] = []
     
-    for index in range(len(mask_filenames)):
+    for index in tqdm(range(len(mask_filenames))):
         mask_img = imread(mask_filenames[index])
         fluor_img = imread(fluor_filenames[index])
         alpha_bg, beta_bg = chromo_mean_var_bg_outside(fluor_img, mask_img, 
@@ -250,8 +253,32 @@ def get_full_edt_maps(masks_dir, fluor_dir, save_filename=None,
         except Exception as e:
             print(f"found some nan probably as file number: {index}")
             print(f"Exception: {e}")
-        print(index, "Done")
-    return np.mean(chip_bg_alphas), np.mean(chip_bg_betas), edt_fit_pool_alphas, edt_fit_pool_betas
+
+    for key in list(edt_fit_pool_alphas.keys()):
+        if len(edt_fit_pool_alphas[key]) != 0:
+            edt_fit_pool_alphas[key] = np.mean(edt_fit_pool_alphas[key])
+        else:
+            del edt_fit_pool_alphas[key]
+    for key in list(edt_fit_pool_betas.keys()):
+        if len(edt_fit_pool_betas[key]) != 0:
+            edt_fit_pool_betas[key] = np.mean(edt_fit_pool_betas[key])
+        else:
+            del edt_fit_pool_betas[key]
+    
+    edt_fit_pool_alphas[0] = np.mean(chip_bg_alphas)
+    edt_fit_pool_betas[0] = np.mean(chip_bg_betas)
+    for key in list(edt_fit_pool_alphas.keys()):
+        if edt_fit_pool_alphas[key] == float('nan'):
+            del edt_fit_pool_alphas[key]
+            del edt_fit_pool_betas[key]
+    
+    if save_filename != None:
+        with open(save_filename, "wb") as fp:
+            pickle.dump({
+                'alphas': edt_fit_pool_alphas,
+                'betas': edt_fit_pool_betas
+            }, fp, protocol=pickle.HIGHEST_PROTOCOL)
+    return edt_fit_pool_alphas, edt_fit_pool_betas
     
 
 
