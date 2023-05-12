@@ -90,7 +90,7 @@ class TrainFuncs:
             prob_map = prob_map / prob_map.sum() * density
 
             # bg returned by datasimulator is just the psf and not the bg
-            imgs_sim, xyzi_gt, s_mask, psf_imgs_gt, locs = self.data_generator.simulate_data( 
+            imgs_sim, xyzi_gt, s_mask, psf_imgs_gt, locs, field_xy = self.data_generator.simulate_data( 
                 prob_map=gpu(prob_map), batch_size=self.batch_size,
                 local_context=self.local_context,
                 photon_filter=self.train_params['photon_filter'],
@@ -100,7 +100,6 @@ class TrainFuncs:
                 robust_training=self.data_generator.simulation_params['robust_training'],
                 cell_masks=None
             )
-            cell_bg_coord = None
         else:
             # now you are training on cells.
             # read one image from the directory and load a random mask and generate probability map
@@ -109,7 +108,7 @@ class TrainFuncs:
             random_filename = random.choice(self.data_generator.cell_mask_filenames)
             random_cell_mask = imread(random_filename)
             random_cell_mask = segmentation.expand_labels(random_cell_mask, distance=1)
-            print('sampling random filename', random_filename)
+            #print('sampling random filename', random_filename)
             non_cell_density = self.simulation_params['non_cell_density']
 
             # generate probabilty map and cell mask crop from this one random cell mask
@@ -118,7 +117,7 @@ class TrainFuncs:
                                                 simulation_params['margin_empty']) 
 
             # bg returned by datasimulator is just the psf and not the bg
-            imgs_sim, xyzi_gt, s_mask, psf_imgs_gt, locs = self.data_generator.simulate_data( 
+            imgs_sim, xyzi_gt, s_mask, psf_imgs_gt, locs, field_xy = self.data_generator.simulate_data( 
                 prob_map=gpu(prob_map), batch_size=self.batch_size,
                 local_context=self.local_context,
                 photon_filter=self.train_params['photon_filter'],
@@ -128,10 +127,11 @@ class TrainFuncs:
                 robust_training=self.data_generator.simulation_params['robust_training'],
                 cell_masks=cell_masks_batch
             )
-            cell_bg_coord = None
  
 
-        P, xyzi_est, xyzi_sig, psf_imgs_est = self.inferring(imgs_sim, cell_bg_coord)
+        P, xyzi_est, xyzi_sig, psf_imgs_est = self.inferring(imgs_sim, field_xy, 
+                                                camera_chip_size=[self.data_generator.camera_chip_size[1], 
+                                                                  self.data_generator.camera_chip_size[0]])
 
         # loss
         loss_total = self.final_loss(P, xyzi_est, xyzi_sig, xyzi_gt, s_mask, psf_imgs_est, psf_imgs_gt, locs)
@@ -246,7 +246,7 @@ class LossFuncs:
 
 class InferFuncs:
 
-    def inferring(self, X, cell_bg_coord):
+    def inferring(self, X, field_xy, camera_chip_size):
         """
         Main function for inferring process
 
@@ -254,7 +254,7 @@ class InferFuncs:
         ------------
             X:  input image could be 4 or 3 dim
 
-            cell_bg_coord: cell bg coordinates that you make for the images
+            field_xy: cell bg coordinates that you make for the images
         """
 
         img_h, img_w = X.shape[-2], X.shape[-1]
@@ -264,7 +264,7 @@ class InferFuncs:
 
         if X.ndimension() == 3: # at test time
             scaled_x = scaled_x[:, None]
-            fm_out = self.frame_module(scaled_x, cell_bg_coord)
+            fm_out = self.frame_module(scaled_x, field_xy, camera_chip_size)
             if self.local_context:
                 zeros = torch.zeros_like(fm_out[:1])
                 h_t0 = fm_out
@@ -272,15 +272,15 @@ class InferFuncs:
                 h_tp1 = torch.cat([fm_out, zeros], 0)[1:]
                 fm_out = torch.cat([h_tm1, h_t0, h_tp1], 1)
         elif X.ndimension() == 4: # at train time we will have this
-            fm_out = self.frame_module(scaled_x.reshape([-1, 1, img_h, img_w]), cell_bg_coord).reshape(-1, self.n_filters * self.n_inp, img_h, img_w)
+            fm_out = self.frame_module(scaled_x.reshape([-1, 1, img_h, img_w]), field_xy, camera_chip_size).reshape(-1, self.n_filters * self.n_inp, img_h, img_w)
         
         # layer norm
 
         fm_out_LN = nn.functional.layer_norm(fm_out, normalized_shape=[self.n_filters * self.n_inp, img_h, img_w])
         cm_in = fm_out_LN
 
-        cm_out = self.context_module(cm_in, cell_bg_coord)
-        outputs = self.out_module.forward(cm_out, cell_bg_coord)
+        cm_out = self.context_module(cm_in, field_xy, camera_chip_size)
+        outputs = self.out_module.forward(cm_out, field_xy, camera_chip_size)
 
         if self.sig_pred:
             xyzi_sig = torch.sigmoid(outputs['xyzi_sig']) + 0.001

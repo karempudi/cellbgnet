@@ -169,7 +169,7 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
         eval_imgs = np.zeros([1, eval_size_y, eval_size_x])
 
         for j in tqdm(range(self.evaluation_params['number_images']), desc='Eval image generation'):
-            imgs_sim, xyzi_mat, s_mask, psf_est, locs = self.data_generator.simulate_data(
+            imgs_sim, xyzi_mat, s_mask, psf_est, locs, field_xy = self.data_generator.simulate_data(
                     prob_map=gpu(prob_map[j][None, :]), batch_size=1, local_context=self.local_context,
                     photon_filter=False, photon_filter_threshold=0, P_locs_cse=False,
                     iter_num=self._iter_count, train_size=eval_size_x, cell_masks=cell_masks_batch[j][np.newaxis, :])

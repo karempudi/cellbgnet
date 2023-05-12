@@ -44,7 +44,7 @@ Network:
   sig_pred: True
   psf_pred: True
   local_context: False # This will just use 1 frame for context, always False for our use-case
-  use_coordconv: False # Use if you want to add cell-bg coordinate on top
+  use_coordconv: True # Use if you want to add xy field on top # later add cell edt coordinate as well
   factor: 520.0 # calculate these from data
   offset: 100.0 # calculate these from data
 
@@ -92,7 +92,7 @@ Evaluation:
   candidate_threshold: 0.3
   nms_threshold: 0.7
   print_result: False
-  batch_size: 4
+  batch_size: 16
   padded_background: 115 # we will get back to this padded value later
 
 
@@ -110,6 +110,6 @@ Hardware:
 InOut:
   experiment_out: '/mnt/sda1/SMLAT/training_runs/'
   calibration_file: ''
-  filename: '/mnt/sda1/SMLAT/training_runs/model_20230416_venus_20k_avgbg_lower_counts'
+  filename: '/mnt/sda1/SMLAT/training_runs/model_8865_venus'
 Meta:
   version:

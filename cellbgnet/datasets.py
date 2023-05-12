@@ -518,6 +518,8 @@ class DataSimulator(object):
         else:
             field_xy = torch.tensor([0, self.camera_chip_size[1] - 1, 0, self.camera_chip_size[0] - 1])
         
+        #print(f"After sampling field_xy is: {field_xy}")
+        
         return locs, x_os, y_os, z, ints, field_xy
 
 
@@ -658,4 +660,4 @@ class DataSimulator(object):
                         S[i, int(pix_cor[i, j][0]), int(pix_cor[i, j][1])] = 0
         locs = S if P_locs_cse else None
 
-        return imgs_sim, xyzi_gt, s_mask, psf_imgs_gt, locs
+        return imgs_sim, xyzi_gt, s_mask, psf_imgs_gt, locs, field_xy
