@@ -211,6 +211,7 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
                                                   plot_num=None,
                                                   win_size=self.data_generator.simulation_params['train_size'],
                                                   padding=True,
+                                                  start_field_pos=[0, 0],
                                                   padded_background=self.evaluation_params['padded_background'])
             match_dict, _ = assess(test_frame_nbr=self.evaluation_params['number_images'],
                                    test_csv=self.evaluation_params['ground_truth'], pred_inp=preds_raw,

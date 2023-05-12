@@ -28,7 +28,7 @@ def find_frame(molecule_list, frame_nbr):
     return list_index
 
 
-def infer_imgs(model, images, cell_bg_coord_imgs=None, batch_size=100, z_scale=10, int_scale=10, use_tqdm=False):
+def infer_imgs(model, images, field_xy, batch_size=100, z_scale=10, int_scale=10, use_tqdm=False):
     """
     Performs inference for a given set of images.
     
@@ -38,8 +38,8 @@ def infer_imgs(model, images, cell_bg_coord_imgs=None, batch_size=100, z_scale=1
         An instance of CellBGModel
     images: numpy array
         Three dimensional array of SMLM images
-    cell_bg_coord_imgs: numpy array
-        Cell bg coordinates if you use them in the network model
+    field_xy: a list of four number 
+        corresponding to the field 
     batch_size: int
         Images are proccessed in batches of the given size. 
         When the images are large, the batch size has to be lowered to save GPU memory. 
@@ -78,7 +78,9 @@ def infer_imgs(model, images, cell_bg_coord_imgs=None, batch_size=100, z_scale=1
 
         for i in tqdm_func(range(int(np.ceil(N / batch_size)))):
             p, xyzi, xyzi_sig, bg = model.inferring(X=gpu(images[i * batch_size:(i + 1) * batch_size + 2]),
-                                                    cell_bg_coord=None)
+                                                    field_xy=field_xy,
+                                                    camera_chip_size=[model.data_generator.camera_chip_size[1],
+                                                                      model.data_generator.camera_chip_size[0]])
 
             infs['Probs'].append(p[1:-1].cpu())  # index[1：-1] because the input stack was concatenated with two images
             infs['XO'].append(xyzi[1:-1, 0].cpu())
@@ -387,7 +389,8 @@ def post_process(preds_areas, height, width, pixel_size=[100, 100], win_size=128
 
 def recognition(model, eval_imgs_all, batch_size, use_tqdm, nms, pixel_nm, plot_num,
             win_size=128, padding=True, candidate_threshold=0.3,
-            nms_threshold=0.3, padded_background=110, wobble=[0, 0]):
+            nms_threshold=0.3, padded_background=110, start_field_pos=[0, 0],
+            wobble=[0, 0]):
     
     """
     Analyze the SMLM model from cellbgnet model or decode version of this
@@ -434,6 +437,8 @@ def recognition(model, eval_imgs_all, batch_size, use_tqdm, nms, pixel_nm, plot_
     # number of images of shape N x h x w
     N, h, w = eval_imgs_all.shape[0], eval_imgs_all.shape[1], eval_imgs_all.shape[2]
 
+    # copy start field
+    start_field = copy.deepcopy(start_field_pos)
     # enforce the image size to be a multiple of 4, pad with given background
     
     pad_h = 0
@@ -447,6 +452,7 @@ def recognition(model, eval_imgs_all, batch_size, use_tqdm, nms, pixel_nm, plot_
             eval_imgs_all = np.pad(eval_imgs_all, [[0, 0], [pad_h, 0], [0, 0]],
                                    mode='constant', constant_values=padded_background)
             
+            start_field_pos[1] -= pad_h
             h += pad_h
         
         if w % 4 != 0:
@@ -454,6 +460,7 @@ def recognition(model, eval_imgs_all, batch_size, use_tqdm, nms, pixel_nm, plot_
             pad_w = new_w - w
             eval_imgs_all = np.pad(eval_imgs_all, [[0, 0], [0, 0], [pad_w, 0]],
                                    mode='constant', constant_values=padded_background)
+            start_field[0] -= pad_w
             
             w += pad_w
     
@@ -488,13 +495,13 @@ def recognition(model, eval_imgs_all, batch_size, use_tqdm, nms, pixel_nm, plot_
             # to most-defininity make no predictions
             sub_imgs_tmp = eval_imgs_all[:, y_start: y_end, x_start: x_end]
             # TODO set bg values to be same as training set
-            sub_imgs_tmp = sub_imgs_tmp - padded_background + model.data_generator.simulation_params['bg_values']
+            #sub_imgs_tmp = sub_imgs_tmp - padded_background + model.data_generator.simulation_params['bg_values']
 
             images_areas.append(sub_imgs_tmp)
-            areas_list.append([x_start , x_end - 1,
-                               y_start, y_end - 1])
-            origin_areas_list.append([x_origin, x_origin_end -1,
-                                      y_origin, y_origin_end -1])
+            areas_list.append([x_start + start_field[0], x_end - 1 + start_field[0],
+                               y_start + start_field[1], y_end - 1 + start_field[1]])
+            origin_areas_list.append([x_origin + start_field[0], x_origin_end -1 + start_field[0],
+                                      y_origin + start_field[1], y_origin_end -1 + start_field[1]])
 
     if plot_num:
         if 0 <= plot_num - 1 < N:
@@ -515,7 +522,6 @@ def recognition(model, eval_imgs_all, batch_size, use_tqdm, nms, pixel_nm, plot_
     preds_areas_rescale = []
 
     for i in range(area_rows * area_columns):
-        # TODO, here you might want to crop out cell mask field area 
         field_xy = torch.tensor(areas_list[i])
 
         if use_tqdm:
@@ -532,7 +538,7 @@ def recognition(model, eval_imgs_all, batch_size, use_tqdm, nms, pixel_nm, plot_
         # infer one are at time, you will batch each of the region into one batch
         # you give one region at a time # find a way to give cell_bg images later once
         # TODO give cell-bg images by area aswell.
-        arr_infs = infer_imgs(model, images_areas[0], cell_bg_coord_imgs=None, batch_size=batch_size,
+        arr_infs = infer_imgs(model, images_areas[0], field_xy=field_xy, batch_size=batch_size,
                               z_scale=model.data_generator.psf_params['z_scale'],
                               int_scale=model.data_generator.psf_params['photon_scale'])
 
