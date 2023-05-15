@@ -62,7 +62,7 @@ def chromo_mean_var_bg_outside(fluor_img, cellseg_mask, dilate=True, roi=None,
     collect_bg_only = only_pixels_outside[np.where(only_pixels_outside < np.percentile(only_pixels_outside, 99))]
 
     # now fit a gamma distribution and return the mean and variance of this fitted distribution
-    fit_alpha, fit_loc, fit_beta = scipy.stats.gamma.fit(collect_bg_only, floc=0)
+    fit_alpha, fit_loc, fit_beta = scipy.stats.gamma.fit(collect_bg_only, floc=0.0)
     low, high = collect_bg_only.min(), collect_bg_only.max()
 
     if plot:
@@ -207,7 +207,7 @@ def chromo_edt_mean_variance_inside(fluor_img, cellseg_mask, bg_cutoff_percentil
 
 def get_full_edt_maps(masks_dir, fluor_dir, save_filename=None,
                 mask_fileformat='.png', fluor_fileformat='.tiff',
-                roi=[170, 420, 720, 720], edt_min_max=[1, 7]):
+                roi=[170, 420, 720, 720], edt_min_max=[1, 7], bg_cutoff_percentile=75):
     """
     Gets edt maps that you can save and reload them back later.
     
@@ -243,7 +243,8 @@ def get_full_edt_maps(masks_dir, fluor_dir, save_filename=None,
         chip_bg_alphas.append(alpha_bg)
         chip_bg_betas.append(beta_bg)
         try:
-            edt_data = chromo_edt_mean_variance_inside(fluor_img, mask_img, plot=False, return_values=False)
+            edt_data = chromo_edt_mean_variance_inside(fluor_img, mask_img, plot=False, return_values=False,
+                                 bg_cutoff_percentile=bg_cutoff_percentile)
             for edt_val in range(edt_min_max[0], edt_min_max[1]):
                 if edt_data['fits'][edt_val]['alpha'] != float('nan'):
                     edt_fit_pool_alphas[edt_val].append(edt_data['fits'][edt_val]['alpha'])

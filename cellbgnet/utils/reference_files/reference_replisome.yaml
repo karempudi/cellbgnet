@@ -29,9 +29,9 @@ Simulation:
   sig_read: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/RN_e_venus.tiff'
   robust_training: False
 
-  cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/phase_venus_mask/'
+  cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/replisome_dots/pool_3024/phase_venus_mask/'
   cell_masks_filetype: '.png'
-  edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/edt_noise.pkl'
+  edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/replisome_dots/pool_3024/edt_noise.pkl'
   min_edt: 0
   max_edt: 6
 
@@ -45,7 +45,7 @@ Network:
   psf_pred: True
   local_context: False # This will just use 1 frame for context, always False for our use-case
   use_coordconv: True # Use if you want to add xy field on top # later add cell edt coordinate as well
-  factor: 520.0 # calculate these from data
+  factor: 620.0 # calculate these from data
   offset: 100.0 # calculate these from data
 
 
@@ -68,7 +68,7 @@ Train:
 PSF:
   calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal_venus.mat'
   psf_size: 41 # kinda irrelevant for spline model psf
-  photon_scale: 3000 # i guess max numbeor of photons
+  photon_scale: 4000 # i guess max numbeor of photons
   z_scale: 500 # what range of values you want to have z emitters in 
   pixel_size_xy:
     - 65
@@ -79,10 +79,10 @@ Evaluation:
   use_cell_masks: True # if true masks will be chosen at random
   density_in_cells: 0.00625 # 
   # masks directory used to sample number_cell_masks images
-  cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/phase_venus_mask/'
+  cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/replisome_dots/pool_3024/phase_venus_mask/'
   cell_masks_filetype: '.png'
   # pre-computed edt_noise map to generate distributions of bg photons
-  edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/edt_noise.pkl'
+  edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/replisome_dots/pool_3024/edt_noise.pkl'
 
   eval_size: #xy, not rc, same as the camera_chip_size
     - 1041 # y
@@ -110,6 +110,6 @@ Hardware:
 InOut:
   experiment_out: '/mnt/sda1/SMLAT/training_runs/'
   calibration_file: ''
-  filename: '/mnt/sda1/SMLAT/training_runs/model_8865_venus'
+  filename: '/mnt/sda1/SMLAT/training_runs/model_3024_replisome'
 Meta:
   version:

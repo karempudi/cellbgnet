@@ -194,7 +194,7 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
 
         plt.figure(constrained_layout=True)
         ax_tmp = plt.subplot(1,1,1)
-        img_tmp = plt.imshow(self.evaluation_params['eval_imgs'][0])
+        img_tmp = plt.imshow(self.evaluation_params['eval_imgs'][0], cmap='gray')
         plt.colorbar(mappable=img_tmp,ax=ax_tmp, fraction=0.046, pad=0.04)
         plt.title('the first image of eval set,check the background')
         # plt.tight_layout()
