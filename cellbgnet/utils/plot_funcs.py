@@ -108,4 +108,4 @@ def plot_train_record(model):
     plt.subplot(4,3,11);plot_od(model.recorder['rmse_y']);plt.xlabel('iterations');plt.ylabel('RMSE_y')
     # plt.subplots_adjust(wspace=0.5,hspace=0.5)
     # plt.tight_layout()
-    plt.show(block=True)
+    plt.show()

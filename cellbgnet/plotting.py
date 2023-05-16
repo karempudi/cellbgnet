@@ -14,4 +14,6 @@ def overlay_cell_boundray_on_fluor(fluor_img, mask_img, contrast_factor=3, color
     plt.figure()
     plt.imshow(edges_img)
     plt.show()
-    
+
+def sample_bg_photons():
+    pass

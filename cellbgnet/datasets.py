@@ -641,6 +641,7 @@ class DataSimulator(object):
             dists = np.zeros_like(cell_masks, dtype='float32')
             for i in range(len(cell_masks)):
                 dists[i] = edt.edt(cell_masks[i])
+                dists[i] = np.round(dists[i])
                 dists[i] = np.clip(dists[i], self.simulation_params['min_edt'], self.simulation_params['max_edt'])
             cells_bg_alpha = map_masks(dists, self.edt_noise_map['alphas'])
             cells_bg_beta = map_masks(dists, self.edt_noise_map['betas'])

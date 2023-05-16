@@ -4,7 +4,7 @@ Simulation:
   train_size: 128 # size of the images network see
   train_type: 'cells' # or 'uniform'
   psf_intensity_normalization: True # false will try to generate all dots at the same time
-  density: 0.00625 # This should put 2 dots in avg cell area 320
+  density: 0.003125 # This should put 2 dots in avg cell area 320
   non_cell_density: 10 # when no cells are there, we use 10 dots per frame
   margin_empty: 0.05 # what percent of the image you want to leave empty on the image
   z_prior:
@@ -77,7 +77,7 @@ PSF:
 Evaluation:
   number_images: 30  # number of images, full camera chip is used
   use_cell_masks: True # if true masks will be chosen at random
-  density_in_cells: 0.00625 # 
+  density_in_cells: 0.003125 # 
   # masks directory used to sample number_cell_masks images
   cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/phase_venus_mask/'
   cell_masks_filetype: '.png'

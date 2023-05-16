@@ -158,6 +158,7 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
             cell_masks_dir = Path(self.evaluation_params['cell_masks_dir'])
             cell_mask_filenames = sorted(list(cell_masks_dir.glob('*' + self.evaluation_params['cell_masks_filetype'])))
             random_filenames = random.choices(cell_mask_filenames, k=self.evaluation_params['number_images'])
+            self.evaluation_params['eval_filenames'] = random_filenames
             cell_masks_batch = []
             for filename in random_filenames:
                 cell_masks_batch.append(imread(filename))
