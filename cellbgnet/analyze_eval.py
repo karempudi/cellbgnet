@@ -9,6 +9,7 @@ import os
 import copy
 import operator
 import csv
+import scipy.signal
 
 from cellbgnet.utils.hardware import cpu, gpu
 from cellbgnet.simulation.psf_kernel import SMAPSplineCoefficient
@@ -414,8 +415,8 @@ def recognition(model, eval_imgs_all, batch_size, use_tqdm, nms, pixel_nm, plot_
 
         plot_num (int or None): Chose a specific frame to return the output
 
-        win_size: TODO will come back to this when you understand it fully, mostly the size of the image 
-                  analyzed at test time, big images will be chopped to win_size
+        win_size: The size of the image 
+                  analyzed at test time, big images will be chopped to win_size, same as train_size 
         padding (bool): If padding=True, this will cut a larger area (20 pixels) than win_size and
                         traverse with overlap to avoid error from incomplete PSFs at the margin.
         
@@ -934,7 +935,7 @@ def spline_crlb_plot(calib_file, z_range=400.0, pixel_size_xy=[65.0, 65.0], dz=2
     phot = photon_counts * torch.ones((n_planes,))
     bg = bg_photons * torch.ones((n_planes,))
 
-    crlb, _ = psf.crlb_sq(xyz, phot, bg)
+    crlb, rois = psf.crlb_sq(xyz, phot, bg)
 
     plt.figure(constrained_layout=True)
     plt.plot(z, crlb[:, 0], 'b', z, crlb[:, 1], 'g', z, crlb[:, 2], 'r')
@@ -944,6 +945,8 @@ def spline_crlb_plot(calib_file, z_range=400.0, pixel_size_xy=[65.0, 65.0], dz=2
     plt.ylabel(r'$\sqrt{CRLB}$ (nm)')
     plt.title(f"CRLB plot at photon counts={photon_counts} and background={bg_photons}")
     plt.show()
+
+    return crlb, rois
 
 
 
@@ -957,3 +960,149 @@ def model_RMSE_plot():
     -----------
 
     """
+
+
+def plot_full_img_predictions(model, plot_infs, eval_csv, plot_num, fov_size, pixel_size):
+
+    h, w = plot_infs[0]['raw_img'].shape[0], plot_infs[0]['raw_img'].shape[1]
+    rows, columns = plot_infs[0]['rows'], plot_infs[0]['columns']
+    win_size = plot_infs[0]['win_size']
+
+    img_infs = {}
+    for k in plot_infs[1]:
+        img_infs[k] = np.zeros([h, w])
+        for i in range(len(plot_infs)-1):
+            row_start = i // columns * win_size
+            column_start = i % columns * win_size
+
+            img_infs[k][row_start:row_start+win_size if row_start+win_size < h else h,
+                        column_start:column_start+win_size if column_start+win_size < w else w] = plot_infs[i+1][k]
+
+    fig1, ax_arr = plt.subplots(4, 3, figsize=(9,12), constrained_layout=True)
+    # plt.subplots_adjust(wspace=0.5, hspace=0.5)
+    ax = []
+    datas = []
+    plts = []
+    for i in ax_arr:
+        for j in i:
+            ax.append(j)
+
+    datas.append(plot_infs[0]['raw_img'])
+    datas.append(plot_infs[0]['raw_img'])
+    datas.append(img_infs['Probs'])
+    datas.append(img_infs['XO'])
+    datas.append(img_infs['YO'])
+    datas.append(img_infs['ZO'])
+    datas.append(img_infs['Int'])
+    datas.append(img_infs['XO_sig'])
+    datas.append(img_infs['YO_sig'])
+    datas.append(img_infs['ZO_sig'])
+    if model.psf_pred:
+        datas.append(img_infs['BG'])
+        datas.append(scipy.signal.medfilt2d(plot_infs[0]['raw_img'] - img_infs['BG'], kernel_size=9))
+    titles = ['Image', 'deterministic locs', 'Inferred probabilities',  'Inferred x-offset',
+              'Inferred y-offset', 'Inferred z-offset', 'Intensity', 'X-offset_uncertainty',
+              'Y-offset_uncertainty', 'Z-offset_uncertainty', 'Predicted raw image', 'Background']
+
+    for i in range(len(datas)): 
+        plts.append(ax[i].imshow(datas[i]))
+        ax[i].set_title(titles[i], fontsize=10)
+        plt.colorbar(plts[i], ax=ax[i], fraction=0.046, pad=0.04)
+
+    for x,y in zip(img_infs['Samples_ps'].nonzero()[1],img_infs['Samples_ps'].nonzero()[0]):
+        ax[1].add_patch(plt.Circle((x, y), radius=1.5, color='cyan', fill=True, lw=0.5, alpha=0.8))
+
+    if eval_csv is not None:
+        truth_map = get_pixel_truth(eval_csv, plot_num , fov_size, pixel_size)
+        for x, y in zip(truth_map.nonzero()[0], truth_map.nonzero()[1]):
+            # circ = plt.Circle((x, y), radius=3, color='g', fill=False, lw=0.5)
+            ax[1].add_patch(plt.Circle((x, y), radius=3, color='g', fill=False, lw=0.5))
+            ax[2].add_patch(plt.Circle((x, y), radius=3, color='g', fill=False, lw=0.5))
+
+    fig_fs,ax_fs=plt.subplots(1,1,figsize=(6,6),constrained_layout=True)
+    plt.colorbar(ax_fs.imshow(datas[0], cmap='gray'), ax=ax_fs, fraction=0.046, pad=0.04)
+    for x,y in zip(img_infs['Samples_ps'].nonzero()[1],img_infs['Samples_ps'].nonzero()[0]):
+        ax_fs.add_patch(plt.Circle((x, y), radius=1.5, color='cyan', fill=True, lw=0.5, alpha=0.8))
+
+
+    # plt.figure()
+    # plt.imshow(datas[2])
+    # plt.figure()
+    # plt.imshow(datas[1])
+    # plt.tight_layout()
+    plt.show()
+
+def filt_preds(preds, nms_p_thre=0.7, sig_perc=100, is_3d=True):
+    """Removes the localizations with the highest uncertainty estimate
+    
+    Parameters
+    ----------
+    preds: list
+        List of localizations
+    sig_perc: float between 0 and 100
+        Percentage of localizations that remain
+    is_3d: int
+        If false only uses x and y uncertainty to filter
+        
+    Returns
+    -------
+    preds: list
+        List of remaining localizations
+    """
+    if len(preds):
+        # filter by nms_p
+        preds = np.array(preds, dtype=np.float32)
+        nmsp = preds[:, 6]
+        filt_nmsp_index = np.where(nmsp >= nms_p_thre)
+        preds = preds[filt_nmsp_index]
+
+        if len(preds):
+            if preds[0][-1] is not None:
+                x_sig_var = np.var(preds[:, -4])
+                y_sig_var = np.var(preds[:, -3])
+                z_sig_var = np.var(preds[:, -2])
+
+                tot_var = preds[:, -4] ** 2 + (np.sqrt(x_sig_var / y_sig_var) * preds[:, -3]) ** 2
+                if is_3d:
+                    tot_var += (np.sqrt(x_sig_var / z_sig_var) * preds[:, -2]) ** 2
+
+                max_s = np.percentile(tot_var, sig_perc)
+                filt_sig = np.where(tot_var <= max_s)
+
+                preds = list(preds[filt_sig])
+
+    return list(preds)
+
+
+def filt_preds_xyz(preds, nms_p_thre=0.7, sigma_x=100, sigma_y=100, sigma_z=100, is_3d=True):
+    """Removes the localizations < nms_p threshold and > sigma_xyz
+
+    Parameters
+    ----------
+    preds: list
+        List of localizations
+    sig_perc: float between 0 and 100
+        Percentage of localizations that remain
+    is_3d: int
+        If false only uses x and y uncertainty to filter
+
+    Returns
+    -------
+    preds: list
+        List of remaining localizations
+    """
+    if len(preds):
+        # filter by nms_p
+        preds = np.array(preds, dtype=np.float32)
+        nmsp = preds[:, 6]
+        filt_nmsp_index = np.where(nmsp >= nms_p_thre)
+        preds = preds[filt_nmsp_index]
+
+        if len(preds):
+            if preds[0][-1] is not None:
+                # filter by sigma_xyz
+                filt_sigmaxyz_index = np.where(
+                    (preds[:, -4] <= sigma_x) & (preds[:, -3] <= sigma_y) & (preds[:, -2] <= sigma_z))
+                preds = preds[filt_sigmaxyz_index]
+
+    return list(preds)

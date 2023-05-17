@@ -109,3 +109,28 @@ def plot_train_record(model):
     # plt.subplots_adjust(wspace=0.5,hspace=0.5)
     # plt.tight_layout()
     plt.show()
+
+def plot_preds_distribution(preds,preds_final):
+    fig,axes = plt.subplots(2,2)
+    axes[0,0].hist(np.array(preds)[:, 6], bins=50)
+    axes[0,0].axvspan(np.array(preds_final)[:, 6].min(),np.array(preds_final)[:, 6].max(),color='green', alpha=0.1)
+    axes[0,0].set_xlabel(r'$nms-p$')
+    axes[0,0].set_ylabel('counts')
+
+    axes[0,1].hist(np.array(preds)[:, 7], bins=50)
+    axes[0,1].axvspan(0, np.array(preds_final)[:, 7].max(),color='green', alpha=0.1)
+    axes[0,1].set_xlabel(r'$\sigma_x$ [nm]')
+    axes[0,1].set_ylabel('counts')
+
+    axes[1,0].hist(np.array(preds)[:, 8], bins=50)
+    axes[1,0].axvspan(0, np.array(preds_final)[:, 8].max(),color='green', alpha=0.1)
+    axes[1,0].set_xlabel(r'$\sigma_y$ [nm]')
+    axes[1,0].set_ylabel('counts')
+
+    axes[1,1].hist(np.array(preds)[:, 9], bins=50)
+    axes[1,1].axvspan(0, np.array(preds_final)[:, 9].max(),color='green', alpha=0.1)
+    axes[1,1].set_xlabel(r'$\sigma_z$ [nm]')
+    axes[1,1].set_ylabel('counts')
+    plt.tight_layout()
+    plt.show()
+    return fig,axes
