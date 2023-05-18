@@ -1106,3 +1106,47 @@ def filt_preds_xyz(preds, nms_p_thre=0.7, sigma_x=100, sigma_y=100, sigma_z=100,
                 preds = preds[filt_sigmaxyz_index]
 
     return list(preds)
+
+
+def assemble_full_img_predictions(model, plot_infs, pad_h=3, pad_w=2):
+
+    """
+    Predictions made by plot_areas output of the recognition function will 
+    give tiled representation of the results, that need to be assembled 
+    to make plots. This function is similar to plot_full_img_predictions.
+
+    Returns:
+        a dictionary with keys of corresponding names like prob, x, y, z, x_s,...
+        with values numpy arrays the same size as that of one image, whose 
+        predicitons are in plot_infs.
+    """
+
+    img_infs = {}
+
+    h, w = plot_infs[0]['raw_img'].shape[0], plot_infs[0]['raw_img'].shape[1]
+    rows, columns = plot_infs[0]['rows'], plot_infs[0]['columns']
+    win_size = plot_infs[0]['win_size']
+
+    for k in plot_infs[1]:
+        # make full images with same keys as in infs
+        img_infs[k] = np.zeros([h, w])
+        # loop over tiles and untile them
+        for i in range(len(plot_infs)-1):
+            row_start = i // columns * win_size
+            column_start = i % columns * win_size
+
+            img_infs[k][row_start:row_start+win_size if row_start+win_size < h else h,
+                        column_start:column_start+win_size if column_start+win_size < w else w] = plot_infs[i+1][k]
+    
+    img_infs['raw_img'] = plot_infs[0]['raw_img']
+
+    if model.psf_pred:
+        # you are predicting psf, add background photons
+        # TODO: investiage why there is smoothing done in FD code.. I dont' get why
+        img_infs['only_bg'] = (plot_infs[0]['raw_img'] - img_infs['BG']) 
+    
+    for k in img_infs:
+        img_infs[k] = img_infs[k][pad_h:, pad_w:]
+
+    return img_infs
+
