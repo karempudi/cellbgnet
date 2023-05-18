@@ -946,6 +946,10 @@ def spline_crlb_plot(calib_file, z_range=400.0, pixel_size_xy=[65.0, 65.0], dz=2
     plt.title(f"CRLB plot at photon counts={photon_counts} and background={bg_photons}")
     plt.show()
 
+    print(f"Mean CRLB x over full z range:{-z_range} - {z_range} [nm] is: {np.mean(crlb[:, 0].numpy())}")
+    print(f"Mean CRLB y over full z range:{-z_range} - {z_range} [nm] is  {np.mean(crlb[:, 1].numpy())}")
+    print(f"Mean CRLB z over full z range:{-z_range} - {z_range} [nm] is  {np.mean(crlb[:, 2].numpy())}")
+
     return crlb, rois
 
 

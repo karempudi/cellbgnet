@@ -459,7 +459,8 @@ class DataSimulator(object):
 
         return imgs_sim
     
-    def sampling(self, prob_map, batch_size=1, local_context=False, iter_num=None, train_size=128):
+    def sampling(self, prob_map, batch_size=1, local_context=False, iter_num=None, train_size=128,
+                    constant_photon_counts=False):
         """
 
         Randomly generate the molecule localizations, (discrete pixel + offsets) like decode but simpler
@@ -467,6 +468,7 @@ class DataSimulator(object):
 
         Arguments:
         ------------
+            constant_photon_counts: if true, will use max value as the value for all dots
 
         Returns:
         ------------
@@ -499,9 +501,12 @@ class DataSimulator(object):
         else:
             locs = locs1
 
-        # photon number is sampled from a  uniform distribution
-        ints = torch.distributions.Uniform(torch.zeros_like(locs) + self.simulation_params['min_photon'],
-                                    torch.ones_like(locs)).sample().to(self.device)
+        if constant_photon_counts == False:
+            # photon number is sampled from a  uniform distribution
+            ints = torch.distributions.Uniform(torch.zeros_like(locs) + self.simulation_params['min_photon'],
+                                        torch.ones_like(locs)).sample().to(self.device)
+        else:
+            ints = 0.75 * torch.ones_like(locs).to(self.device)
 
         # only get values of the offsets where there are emitters
         x_os *= locs
@@ -526,7 +531,8 @@ class DataSimulator(object):
 
     def simulate_data(self, prob_map, batch_size=1, local_context=False,
             photon_filter=False, photon_filter_threshold=100, P_locs_cse=False,
-            iter_num=None, train_size=128, robust_training=False, cell_masks=None):
+            iter_num=None, train_size=128, robust_training=False, cell_masks=None,
+            constant_photon_counts=False):
         """
         Main function for simulating SMLM images. All different kinds of simulation modes
         get handled slightly differently
@@ -551,6 +557,8 @@ class DataSimulator(object):
             train_size (int): Size of the images seen by the net
             robust_training (bool): Not used for now
 
+            constant_photon_counts: if true, will use max photon count value in photon_scale parameter
+                                    as photon counts for all dots
 
             cell_masks (np.ndarray): cell masks to be used for different noise models of the
                                      background. They are not used for PSF placement as it is 
@@ -580,7 +588,7 @@ class DataSimulator(object):
         # do the sampling and construct what is needed. 
         # S is locs, X_os, Y_os are offsets, Z and I are also scaled values in appropriate ranges
         S, X_os, Y_os, Z, I, field_xy = self.sampling(batch_size=batch_size, prob_map=prob_map, local_context=local_context,
-                                    iter_num=iter_num, train_size=train_size)
+                                    iter_num=iter_num, train_size=train_size, constant_photon_counts=constant_photon_counts)
 
         # if there are emitters sampled on the image
         if S.sum():
