@@ -1101,12 +1101,12 @@ def filt_preds_xyz(preds, nms_p_thre=0.7, sigma_x=100, sigma_y=100, sigma_z=100,
         nmsp = preds[:, 6]
         filt_nmsp_index = np.where(nmsp >= nms_p_thre)
         preds = preds[filt_nmsp_index]
-
+        print("After nms filter..", preds.shape)
         if len(preds):
             if preds[0][-1] is not None:
                 # filter by sigma_xyz
                 filt_sigmaxyz_index = np.where(
-                    (preds[:, -4] <= sigma_x) & (preds[:, -3] <= sigma_y) & (preds[:, -2] <= sigma_z))
+                    (preds[:, 7] <= sigma_x) & (preds[:, 8] <= sigma_y) & (preds[:, 9] <= sigma_z))
                 preds = preds[filt_sigmaxyz_index]
 
     return list(preds)

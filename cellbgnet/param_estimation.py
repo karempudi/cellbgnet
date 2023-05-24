@@ -71,7 +71,7 @@ def chromo_mean_var_bg_outside(fluor_img, cellseg_mask, dilate=True, roi=None,
         ax.hist(np.random.gamma(shape=fit_alpha, scale=fit_beta, size=len(collect_bg_only)+0),
                         bins=np.arange(low, high), histtype='step', label='fit')
         ax.set_xlabel('Chip background (ADU)', fontsize=12)
-        ax.set_ylabel('Counter', fontsize=12)
+        ax.set_ylabel('Counts', fontsize=12)
         plt.legend()
         plt.show()
     
