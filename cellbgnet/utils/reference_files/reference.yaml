@@ -11,7 +11,7 @@ Simulation:
     - -1
     - 1
   survival_prob: # only used if there is local context, so in our case it is not used
-  min_photon: 0.4 # intensity distributions sampled from (min_ph, 1)
+  min_photon: 0.25 # intensity distributions sampled from (min_ph, 1)
   camera: 'sCMOS'
   camera_chip_size:
     - 1041
@@ -110,6 +110,6 @@ Hardware:
 InOut:
   experiment_out: '/mnt/sda1/SMLAT/training_runs/'
   calibration_file: ''
-  filename: '/mnt/sda1/SMLAT/training_runs/model_8865_venus'
+  filename: '/mnt/sda1/SMLAT/training_runs/model_8865_venus_low_ph'
 Meta:
   version:
