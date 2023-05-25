@@ -5,8 +5,10 @@ import random
 from skimage.io import imread
 from skimage import segmentation
 from cellbgnet.utils.hardware import cpu, gpu
+from skimage.transform import rotate
 
-def generate_probmap_cells(image, batch_size, train_size, density_in_cells, density_if_no_cells, margin_empty):
+def generate_probmap_cells(image, batch_size, train_size, density_in_cells, density_if_no_cells,
+             margin_empty, augment=False):
     """
     Generate batch_size number of random crops from one image of size train_size
     
@@ -41,6 +43,7 @@ def generate_probmap_cells(image, batch_size, train_size, density_in_cells, dens
     prob_map = np.zeros([batch_size, train_size, train_size])
     cell_masks = np.zeros([batch_size, train_size, train_size])
     for i in range(prob_map.shape[0]):
+
         prob_map[i] = image[y[i]: y[i]+train_size, x[i]:x[i]+train_size] > 0
         cell_masks[i] = image[y[i]: y[i]+train_size, x[i]:x[i]+train_size]
         cell_masks[i][:int(margin_empty * train_size), :] = 0
@@ -114,7 +117,7 @@ class TrainFuncs:
             # generate probabilty map and cell mask crop from this one random cell mask
             prob_map, cell_masks_batch = generate_probmap_cells(random_cell_mask, self.batch_size, 
                                                 train_size, density, non_cell_density,
-                                                simulation_params['margin_empty']) 
+                                                simulation_params['margin_empty'], simulation_params['augment']) 
 
             # bg returned by datasimulator is just the psf and not the bg
             imgs_sim, xyzi_gt, s_mask, psf_imgs_gt, locs, field_xy = self.data_generator.simulate_data( 

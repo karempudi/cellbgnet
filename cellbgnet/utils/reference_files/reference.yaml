@@ -34,6 +34,8 @@ Simulation:
   edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/edt_noise.pkl'
   min_edt: 0
   max_edt: 6
+  # testing cell rotation augmentation
+  augment: True
 
 
 Network:
