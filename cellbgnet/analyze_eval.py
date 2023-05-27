@@ -1077,6 +1077,10 @@ def filt_preds(preds, nms_p_thre=0.7, sig_perc=100, is_3d=True):
 
     return list(preds)
 
+def filt_preds_ph(preds, min_photon_counts):
+
+    pass
+
 
 def filt_preds_xyz(preds, nms_p_thre=0.7, sigma_x=100, sigma_y=100, sigma_z=100, is_3d=True):
     """Removes the localizations < nms_p threshold and > sigma_xyz
