@@ -891,6 +891,7 @@ def limited_matching(truth_origin, pred_list_origin, min_int, limited_x=[0, 2048
 
 def spline_crlb_plot(calib_file, z_range=400.0, pixel_size_xy=[65.0, 65.0], dz=25.0,
                  img_size=129, step_size=10.0, photon_counts=10000.0, bg_photons=100.0,
+                 normalize_rois=True,
                  ):
     """
     Plots the crlb values of the spline model. Calculated from spline PSF package that comes
@@ -915,6 +916,9 @@ def spline_crlb_plot(calib_file, z_range=400.0, pixel_size_xy=[65.0, 65.0], dz=2
 
         bg_photons (float): bg value for PSF simulation
 
+        normalize_rois (bool): if True, then each roi is normalzied to 1 (dividing image
+                                at each height by sum)
+
     """
     psf = SMAPSplineCoefficient(calib_file).init_spline(
         xextent=[-0.5, img_size-0.5], yextent=[-0.5, img_size-0.5], 
@@ -936,6 +940,9 @@ def spline_crlb_plot(calib_file, z_range=400.0, pixel_size_xy=[65.0, 65.0], dz=2
     bg = bg_photons * torch.ones((n_planes,))
 
     crlb, rois = psf.crlb_sq(xyz, phot, bg)
+    if normalize_rois: 
+        rois /= rois.sum(-1).sum(-1)[:, None, None] 
+        rois *= photon_counts
 
     plt.figure(constrained_layout=True)
     plt.plot(z, crlb[:, 0], 'b', z, crlb[:, 1], 'g', z, crlb[:, 2], 'r')
