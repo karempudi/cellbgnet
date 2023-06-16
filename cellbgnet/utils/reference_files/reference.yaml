@@ -71,7 +71,7 @@ PSF:
   calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal_venus.mat'
   psf_size: 41 # kinda irrelevant for spline model psf
   photon_scale: 3000 # i guess max numbeor of photons
-  z_scale: 500 # what range of values you want to have z emitters in 
+  z_scale: 375 # what range of values you want to have z emitters in 
   pixel_size_xy:
     - 65
     - 65
@@ -91,8 +91,8 @@ Evaluation:
     - 1302 # x 
   molecules_per_img: 800 # density used in the prob_map creation before sampling coordinates. No cell masks used in this case
   margin_empty: 0.05 # leave out the boundary
-  candidate_threshold: 0.3
-  nms_threshold: 0.7
+  candidate_threshold: 0.05
+  nms_threshold: 0.05
   print_result: False
   batch_size: 16
   padded_background: 115 # we will get back to this padded value later
@@ -112,6 +112,6 @@ Hardware:
 InOut:
   experiment_out: '/mnt/sda1/SMLAT/training_runs/'
   calibration_file: ''
-  filename: '/mnt/sda1/SMLAT/training_runs/model_8865_venus_low_ph'
+  filename: '/mnt/sda1/SMLAT/training_runs/model_debug'
 Meta:
   version:

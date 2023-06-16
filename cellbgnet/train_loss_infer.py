@@ -137,7 +137,8 @@ class TrainFuncs:
                                                                   self.data_generator.camera_chip_size[0]])
 
         # loss
-        loss_total = self.final_loss(P, xyzi_est, xyzi_sig, xyzi_gt, s_mask, psf_imgs_est, psf_imgs_gt, locs)
+        #loss_total, = self.final_loss(P, xyzi_est, xyzi_sig, xyzi_gt, s_mask, psf_imgs_est, psf_imgs_gt, locs)
+        loss_total, (count_loss, loc_loss, bg_loss, P_locs_error) = self.final_loss(P, xyzi_est, xyzi_sig, xyzi_gt, s_mask, psf_imgs_est, psf_imgs_gt, locs)
 
         self.optimizer_infer.zero_grad()
         loss_total.backward()
@@ -153,7 +154,7 @@ class TrainFuncs:
 
         self._iter_count += 1
 
-        return loss_total.detach()
+        return loss_total.detach(), (count_loss.detach(), loc_loss.detach(), bg_loss.detach(), P_locs_error.detach())
 
 
     def look_trainingdata(self):
@@ -243,9 +244,10 @@ class LossFuncs:
         bg_loss = torch.mean(self.eval_bg_sq_loss(psf_imgs_est, psf_imgs_gt)) if psf_imgs_est is not None else 0
         P_locs_error = torch.mean(self.eval_P_locs_loss(P, locs)) if locs is not None else 0
 
-        loss_total = count_loss + loc_loss + bg_loss + P_locs_error
+        loss_total = (0.2 * count_loss) + loc_loss + (80.0 * bg_loss) + (0.25 * P_locs_error)
 
-        return loss_total
+        return loss_total, (count_loss, loc_loss, bg_loss, P_locs_error)
+        #return loss_total
 
 class InferFuncs:
 

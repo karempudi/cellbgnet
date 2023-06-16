@@ -97,6 +97,10 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
         self.recorder['eff_lat'] = collections.OrderedDict([])
         self.recorder['eff_ax'] = collections.OrderedDict([])
         self.recorder['eff_3d'] = collections.OrderedDict([])
+        self.recorder['count_loss'] = collections.OrderedDict([])
+        self.recorder['loc_loss'] = collections.OrderedDict([])
+        self.recorder['bg_loss'] = collections.OrderedDict([])
+        self.recorder['P_locs_error'] = collections.OrderedDict([])
 
     def init_sliding_window(self):
         """
@@ -252,14 +256,28 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
 
             t0 = time.time()
             total_cost = []
+            count_cost = []
+            loc_cost = []
+            bg_cost = []
+            P_locs_cost = []
 
             # Evaluate the performance and save model every print_fre iterations
             for _ in range(self.print_freq):
-                loss = self.training(self.train_size, self.data_generator.simulation_params)
+                loss, (count_loss, loc_loss, bg_loss, P_locs_error) = self.training(self.train_size, self.data_generator.simulation_params)
                 total_cost.append(cpu(loss))
+                count_cost.append(cpu(count_loss))
+                loc_cost.append(cpu(loc_loss))
+                bg_cost.append(cpu(bg_loss))
+                P_locs_cost.append(cpu(P_locs_error))
+
             total_time += (time.time()  - t0)
 
             self.recorder['cost_hist'][self._iter_count] = np.mean(total_cost)
+            self.recorder['count_loss'][self._iter_count] = np.mean(count_cost)
+            self.recorder['loc_loss'][self._iter_count] = np.mean(loc_cost)
+            self.recorder['bg_loss'][self._iter_count] = np.mean(bg_cost)
+            self.recorder['P_locs_error'][self._iter_count] = np.mean(P_locs_cost)
+
             updatetime = 1000 * total_time / (self._iter_count - last_iter)
             last_iter = self._iter_count
             total_time = 0
@@ -283,8 +301,11 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
                     print('{}{}{:0.3f}'.format(' || ', 'Recall: ', self.recorder['recall'][self._iter_count]), end='')
                     print('{}{}{:0.3f}'.format(' || ', 'Precision: ', self.recorder['precision'][self._iter_count]),end='')
                     print('{}{}{}'.format(' || ', 'BatchNr.: ', self._iter_count), end='')
-                    print('{}{}{:0.3f}'.format(' || ', 'Cost: ', self.recorder['cost_hist'][self._iter_count]), end='')
                     print('{}{}{:0.1f}{}'.format(' || ', 'Time Upd.: ', float(updatetime), ' ms '))
+                    print('{}{}{:0.4f}'.format(' || ', 'Count Cost: ', self.recorder['count_loss'][self._iter_count]), end='')
+                    print('{}{}{:0.4f}'.format(' || ', 'Localization Cost: ', self.recorder['loc_loss'][self._iter_count]), end='')
+                    print('{}{}{:0.4f}'.format(' || ', 'Bg Cost: ', self.recorder['bg_loss'][self._iter_count]), end='')
+                    print('{}{}{:0.4f}'.format(' || ', 'P_locs Cost: ', self.recorder['P_locs_error'][self._iter_count]), end='')
                 else:
                     # print('{}{:0.3f}'.format('Factor: ', self.recorder['n_per_img'][self._iter_count]), end='')
                     print('{}{}{:0.3f}'.format(' || ', 'Cost: ', self.recorder['cost_hist'][self._iter_count]), end='')
