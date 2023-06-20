@@ -57,11 +57,11 @@ def infer_imgs(model, images, field_xy, batch_size=100, z_scale=10, int_scale=10
 
     with torch.no_grad():
         N = len(images)
+        #print(f"Inside infer imgs: {images.shape}, field_xy: {field_xy}")
         if N != 1:
             images = np.concatenate([images[1:2], images, images[-2:-1]], 0).astype('float32')
         else:
             images = np.concatenate([images, images, images], 0).astype('float32')
-
         if use_tqdm:
             tqdm_func = tqdm
         else:
@@ -155,6 +155,7 @@ def nms_sampling(res_dict, threshold=0.3, candi_thre=0.3, batch_size=500, nms=Tr
                     = nms_func(res_dict['Probs'][sl], candi_thre,
                                res_dict['XO'][sl], res_dict['YO'][sl], res_dict['ZO'][sl])
             else:
+                #print("NMS cont is off")
                 res_dict['Probs_ps'][sl] = nms_func(res_dict['Probs'][sl], candi_thre=candi_thre)
 
     res_dict['Samples_ps'] = np.where(res_dict['Probs_ps'] > threshold, 1, 0)  # deterministic locs
@@ -321,8 +322,8 @@ def array_to_list(infs, wobble=[0, 0], pix_nm=[100, 100], z_scale=700, int_scale
 
         for j in range(len(pos[0])):
             pred_list.append([count, i + 1 + start_img,
-                              (0.5 + pos[1][j] + xo[pos[0][j], pos[1][j]]) * pix_nm[0] + wobble[0],
-                              (0.5 + pos[0][j] + yo[pos[0][j], pos[1][j]]) * pix_nm[1] + wobble[1],
+                              (pos[1][j] + xo[pos[0][j], pos[1][j]]) * pix_nm[0] + wobble[0],
+                              (pos[0][j] + yo[pos[0][j], pos[1][j]]) * pix_nm[1] + wobble[1],
                               zo[pos[0][j], pos[1][j]] * z_scale, ints[pos[0][j], pos[1][j]] * int_scale,
                               p_nms[pos[0][j], pos[1][j]]])
             if 'XO_sig' in infs:
@@ -453,7 +454,7 @@ def recognition(model, eval_imgs_all, batch_size, use_tqdm, nms, pixel_nm, plot_
             eval_imgs_all = np.pad(eval_imgs_all, [[0, 0], [pad_h, 0], [0, 0]],
                                    mode='constant', constant_values=padded_background)
             
-            start_field_pos[1] -= pad_h
+            start_field[1] -= pad_h
             h += pad_h
         
         if w % 4 != 0:
@@ -657,7 +658,7 @@ def assess(test_frame_nbr, test_csv, pred_inp, size_xy=[204800, 204800], toleran
                     pred_list.append([float(r) for r in row])
 
     pred_list = copy.deepcopy(pred_inp)
-    print('{}{}'.format(', preds:', len(pred_list)))
+    #print('{}{}'.format(', preds:', len(pred_list)))
 
     if len(pred_list) == 0:
         perf_dict = {'recall': np.nan, 'precision': np.nan, 'jaccard': np.nan, 'f_score': np.nan, 'rmse_lat': np.nan,
@@ -790,7 +791,7 @@ def limited_matching(truth_origin, pred_list_origin, min_int, limited_x=[0, 2048
             if len(tests) == 0:
                 FP += len(preds)
                 continue  # no need to calculate metric
-
+            #print(len(tests), len(preds))
             # calculate the Euclidean distance between all gt and preds, get a matrix [number of gt, number of preds]
             dist_arr = cdist(np.array(tests)[:, 2:4], np.array(preds)[:, 2:4])
             ax_arr = cdist(np.array(tests)[:, 4:5], np.array(preds)[:, 4:5])
@@ -836,7 +837,6 @@ def limited_matching(truth_origin, pred_list_origin, min_int, limited_x=[0, 2048
 
             FP += len(preds)  # all remaining preds are FP
             FN += len(tests)  # all remaining gt are FN
-
     else:
         print('after border and FOV segmentation, pred list is empty!')
 

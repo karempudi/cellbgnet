@@ -320,13 +320,14 @@ class DataSimulator(object):
 
             n_emitters = len(s_inds[0])
             xyz = torch.zeros((n_emitters, 3))
-            xyz[:, 0] = s_inds[1] - x_os_vals[:, 0, 0]
-            xyz[:, 1] = s_inds[2] - y_os_vals[:, 0, 0]
+            xyz[:, 0] = s_inds[1] + x_os_vals[:, 0, 0]
+            xyz[:, 1] = s_inds[2] + y_os_vals[:, 0, 0]
             xyz[:, 2] = z_vals[:, 0, 0]
             photon_counts = i_vals[:, 0, 0]
             frame_ix = s_inds[0]
 
-            em = EmitterSet(xyz=xyz, phot=photon_counts.cpu(), frame_ix=frame_ix.long().cpu(), 
+            em = EmitterSet(xyz=torch.index_select(xyz, 1, torch.LongTensor([1, 0, 2])),
+                            phot=photon_counts.cpu(), frame_ix=frame_ix.long().cpu(), 
                             id=torch.arange(n_emitters).long(), xy_unit='px',
                             px_size=self.psf_params['pixel_size_xy'])
             
@@ -365,15 +366,15 @@ class DataSimulator(object):
             xyz = torch.zeros((n_emitters, 3))
             psf_int_vals = torch.ones((n_emitters, ))
 
-            xyz[:, 0] = self.psf_size // 2 - x_os_vals[:, 0, 0]
-            xyz[:, 1] = self.psf_size // 2 - y_os_vals[:, 0, 0]
+            xyz[:, 0] = self.psf_size // 2 + x_os_vals[:, 0, 0] 
+            xyz[:, 1] = self.psf_size // 2 + y_os_vals[:, 0, 0]
             xyz[:, 2] = z_vals[:, 0, 0]
             # each frame will have one emitter only
             frame_ix = torch.arange(n_emitters)
 
             # it is fine to do on CPU as we don't do decode like large pre-sampling batches
             # it will be slow, but whatever.. 
-            em = EmitterSet(xyz=xyz, phot=psf_int_vals.cpu(), frame_ix=frame_ix.long().cpu(),
+            em = EmitterSet(xyz=torch.index_select(xyz, 1, torch.LongTensor([1, 0, 2])), phot=psf_int_vals.cpu(), frame_ix=frame_ix.long().cpu(),
                             id=torch.arange(n_emitters).long(), xy_unit='px',
                             px_size=self.psf_params['pixel_size_xy'])
             
@@ -606,11 +607,11 @@ class DataSimulator(object):
                 xyzi_true = xyzi[s_inds[0], :, s_inds[1], s_inds[2]]
                 # get the xy continuous pixel positions
                 if self.use_gpu:
-                    xyzi_true[:, 0] += s_inds[2].type(torch.cuda.FloatTensor) + 0.5
-                    xyzi_true[:, 1] += s_inds[1].type(torch.cuda.FloatTensor) + 0.5
+                    xyzi_true[:, 0] += s_inds[2].type(torch.cuda.FloatTensor)
+                    xyzi_true[:, 1] += s_inds[1].type(torch.cuda.FloatTensor)
                 else:
-                    xyzi_true[:, 0] += s_inds[2].type(torch.FloatTensor) + 0.5
-                    xyzi_true[:, 1] += s_inds[1].type(torch.FloatTensor) + 0.5
+                    xyzi_true[:, 0] += s_inds[2].type(torch.FloatTensor) 
+                    xyzi_true[:, 1] += s_inds[1].type(torch.FloatTensor)
                 # return the gt numbers of molecules on each training images of this batch
                 # (if local_context, return the number of molecules on the middle frame)
                 s_counts = torch.unique_consecutive(s_inds[0], return_counts=True)[1]

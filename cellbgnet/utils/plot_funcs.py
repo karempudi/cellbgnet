@@ -168,7 +168,8 @@ def connect_point_set(set0, set1, threeD=False, ax=None):
 # From original decode
 class PlotFrame:
     def __init__(self, frame: torch.Tensor, extent: Optional[tuple] = None, clim=None,
-                 plot_colorbar: bool = False, axes_order: Optional[str] = None):
+                 plot_colorbar: bool = False, axes_order: Optional[str] = None, 
+                 frame_cmap: Optional[str] = 'gray'):
         """
         Plots a frame.
 
@@ -180,6 +181,8 @@ class PlotFrame:
             axes_order: order of axis. Either default order (None) or 'future'
              (i.e. future version of decode in which we will swap axes).
              This is only a visual effect and does not change the storage scheme of the EmitterSet
+            
+            frame_cmap: colormap for the plt.imshow() used to plot the frame
 
         """
 
@@ -188,20 +191,21 @@ class PlotFrame:
         self.clim = clim
         self.plot_colorbar = plot_colorbar
         self._axes_order = axes_order
+        self.frame_cmap = frame_cmap
 
         assert self._axes_order is None or self._axes_order == 'future'
 
-        if self._axes_order is None:
-            self.frame.transpose_(-1, -2)
+        #if self._axes_order is None:
+        #    self.frame.transpose_(-1, -2)
 
     def plot(self) -> plt.axis:
         """
         Plot the frame. Note that according to convention we need to transpose the last two axis.
         """
         if self.extent is None:
-            plt.imshow(self.frame.numpy(), cmap='gray')
+            plt.imshow(self.frame.numpy(), cmap=self.frame_cmap)
         else:
-            plt.imshow(self.frame.numpy(), cmap='gray', extent=(
+            plt.imshow(self.frame.numpy(), cmap=self.frame_cmap, extent=(
                 self.extent[0][0],
                 self.extent[0][1],
                 self.extent[1][1],
@@ -228,7 +232,9 @@ class PlotCoordinates:
                 extent_limit=None,
                 match_lines=False,
                 labels=None,
-                axes_order: Optional[str] = None):
+                axes_order: Optional[str] = None,
+                annotate_tar_z=False,
+                annotate_out_z=False):
         """
         Plots points in 2D projection, only x and y 
         
@@ -242,6 +248,8 @@ class PlotCoordinates:
             match_lines:
             labels:
             axes_order:
+            annotate_tar_z: should you write little text around the marker of target, with value of it's z
+            annotate_out_z: write little text around the marker of output, with value of it's z
         
         """
         self.pos_tar = pos_tar
@@ -252,12 +260,16 @@ class PlotCoordinates:
         self.match_lines = match_lines
         self.labels = labels if labels is not None else self._labels_default
         self._axes_order = axes_order
+        self.annotate_tar_z = annotate_tar_z
+        self.annotate_out_z = annotate_out_z
         
         # color code parameters
         self.tar_marker = 'ro'
         self.tar_cmap = 'winter'
         self.out_marker = 'bx'
         self.out_cmap = 'viridis'
+        self.tar_z_text_color = 'r'
+        self.out_z_text_color = 'b'
         
         assert self._axes_order is None or self._axes_order == 'future'
         
@@ -296,6 +308,15 @@ class PlotCoordinates:
         ax = plt.gca()
         ax.set_aspect('equal', adjustable='box')
 
+        if self.annotate_tar_z and self.pos_tar is not None:
+            for i in range(self.pos_tar.shape[0]):
+                ax.annotate(f"{self.pos_tar[i, 2].item():.1f}", (self.pos_tar[i, 0], self.pos_tar[i, 1]), color=self.tar_z_text_color)
+
+        if self.annotate_out_z and self.pos_out is not None:
+            for i in range(self.pos_out.shape[0]):
+                ax.annotate(f"{self.pos_out[i, 2].item():.1f}", (self.pos_out[i, 0], self.pos_out[i, 1]), color=self.out_z_text_color)
+
+
         ax_ylimits = ax.get_ylim()
         if ax_ylimits[0] <= ax_ylimits[1]:
             ax.set_ylim(ax_ylimits[::-1])  # invert the axis
@@ -325,7 +346,9 @@ class PlotFrameCoord(PlotCoordinates, PlotFrame):
                  norm=None, clim=None,
                  match_lines=False, labels=None,
                  plot_colorbar_frame: bool = False,
-                 axes_order: Optional[str] = None):
+                 axes_order: Optional[str] = None,
+                 annotate_tar_z=False, annotate_out_z=False,
+                 frame_cmap='gray'):
 
         PlotCoordinates.__init__(self,
                                  pos_tar=pos_tar,
@@ -335,10 +358,14 @@ class PlotFrameCoord(PlotCoordinates, PlotFrame):
                                  extent_limit=coord_limit,
                                  match_lines=match_lines,
                                  labels=labels,
-                                 axes_order=axes_order)
+                                 axes_order=axes_order,
+                                 annotate_tar_z=annotate_tar_z,
+                                 annotate_out_z=annotate_out_z)
 
         PlotFrame.__init__(self, frame, extent, clim,
-                           plot_colorbar=plot_colorbar_frame, axes_order=axes_order)
+                           plot_colorbar=plot_colorbar_frame, 
+                           axes_order=axes_order,
+                           frame_cmap=frame_cmap)
 
     def plot(self):
         PlotFrame.plot(self)

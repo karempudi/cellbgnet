@@ -191,6 +191,8 @@ class LossFuncs:
         loss_cse = loss_cse.sum(-1).sum(-1)
         return loss_cse
 
+    # dice loss
+
     # Count loss
     def count_loss_analytical(self, P, s_mask):
         log_prob = 0
@@ -210,11 +212,11 @@ class LossFuncs:
 
         xyzi_mu = xyzi_est[p_inds[0], :, p_inds[1], p_inds[2]]
         if self.using_gpu:
-            xyzi_mu[:, 0] += p_inds[2].type(torch.cuda.FloatTensor) + 0.5
-            xyzi_mu[:, 1] += p_inds[1].type(torch.cuda.FloatTensor) + 0.5
+            xyzi_mu[:, 0] += p_inds[2].type(torch.cuda.FloatTensor)
+            xyzi_mu[:, 1] += p_inds[1].type(torch.cuda.FloatTensor)
         else:
-            xyzi_mu[:, 0] += p_inds[2].type(torch.FloatTensor) + 0.5
-            xyzi_mu[:, 1] += p_inds[1].type(torch.FloatTensor) + 0.5
+            xyzi_mu[:, 0] += p_inds[2].type(torch.FloatTensor)
+            xyzi_mu[:, 1] += p_inds[1].type(torch.FloatTensor)
 
         xyzi_mu = xyzi_mu.reshape(self.batch_size, 1, -1, 4)
         xyzi_sig = xyzi_sig[p_inds[0], :, p_inds[1], p_inds[2]].reshape(self.batch_size, 1, -1, 4)  # >=0.01
@@ -242,7 +244,7 @@ class LossFuncs:
         count_loss = torch.mean(self.count_loss_analytical(P, s_mask) * s_mask.sum(-1))
         loc_loss = -torch.mean(self.loc_loss_analytical(P, xyzi_est, xyzi_sig, xyzi_gt, s_mask))
         bg_loss = torch.mean(self.eval_bg_sq_loss(psf_imgs_est, psf_imgs_gt)) if psf_imgs_est is not None else 0
-        P_locs_error = torch.mean(self.eval_P_locs_loss(P, locs)) if locs is not None else 0
+        P_locs_error = torch.mean(self.eval_P_locs_loss(P, locs)) if locs is not None else torch.tensor([0]).cuda()
 
         loss_total = (0.2 * count_loss) + loc_loss + (80.0 * bg_loss) + (0.25 * P_locs_error)
 
