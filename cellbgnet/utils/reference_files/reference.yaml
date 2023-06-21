@@ -29,9 +29,9 @@ Simulation:
   sig_read: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/RN_e_venus.tiff'
   robust_training: False
 
-  cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/phase_venus_mask/'
+  cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/replisome_dots/pool_3024/phase_venus_mask/'
   cell_masks_filetype: '.png'
-  edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/edt_noise.pkl'
+  edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/replisome_dots/pool_3024/edt_noise.pkl'
   min_edt: 0
   max_edt: 6
   # testing cell rotation augmentation
@@ -81,10 +81,10 @@ Evaluation:
   use_cell_masks: True # if true masks will be chosen at random
   density_in_cells: 0.003125 # 
   # masks directory used to sample number_cell_masks images
-  cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/phase_venus_mask/'
+  cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/replisome_dots/pool_3024/phase_venus_mask/'
   cell_masks_filetype: '.png'
   # pre-computed edt_noise map to generate distributions of bg photons
-  edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/edt_noise.pkl'
+  edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/replisome_dots/pool_3024/edt_noise.pkl'
 
   eval_size: #xy, not rc, same as the camera_chip_size
     - 1041 # y
@@ -112,6 +112,6 @@ Hardware:
 InOut:
   experiment_out: '/mnt/sda1/SMLAT/training_runs/'
   calibration_file: ''
-  filename: '/mnt/sda1/SMLAT/training_runs/model_debug_factor_offset_changed'
+  filename: '/mnt/sda1/SMLAT/training_runs/model_debug_factor_offset_changed_replisome'
 Meta:
   version:
