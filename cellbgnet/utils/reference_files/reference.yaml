@@ -26,12 +26,12 @@ Simulation:
   spurious_c: 0.000 # not sure what this is
   #sig_read: 2.07 # sigma of the read noise in electrons, median value
   # file or single value should be given
-  sig_read: '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/pooled_8865/RN_e_venus.tiff'
+  sig_read: '/home/axtr7550/Chromosome_project/data/chromosome_dots/pooled_8865/RN_e_venus.tiff'
   robust_training: False
 
-  cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/replisome_dots/pool_3024/phase_venus_mask/'
+  cell_masks_dir: '/home/axtr7550/Chromosome_project/data/replisome_dots/pool_3024/phase_venus_mask/'
   cell_masks_filetype: '.png'
-  edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/replisome_dots/pool_3024/edt_noise.pkl'
+  edt_noise_map_path: '/home/axtr7550/Chromosome_project/data/replisome_dots/pool_3024/edt_noise.pkl'
   min_edt: 0
   max_edt: 6
   # testing cell rotation augmentation
@@ -68,7 +68,7 @@ Train:
 
 
 PSF:
-  calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal_venus.mat'
+  calib_file: '/home/axtr7550/Chromosome_project/data/splines/bead_3dcal_venus.mat'
   psf_size: 40 # kinda irrelevant for spline model psf
   photon_scale: 3000 # i guess max numbeor of photons
   z_scale: 500 # what range of values you want to have z emitters in 
@@ -81,10 +81,10 @@ Evaluation:
   use_cell_masks: True # if true masks will be chosen at random
   density_in_cells: 0.003125 # 
   # masks directory used to sample number_cell_masks images
-  cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/replisome_dots/pool_3024/phase_venus_mask/'
+  cell_masks_dir: '/home/axtr7550/Chromosome_project/data/replisome_dots/pool_3024/phase_venus_mask/'
   cell_masks_filetype: '.png'
   # pre-computed edt_noise map to generate distributions of bg photons
-  edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/replisome_dots/pool_3024/edt_noise.pkl'
+  edt_noise_map_path: '/home/axtr7550/Chromosome_project/data/replisome_dots/pool_3024/edt_noise.pkl'
 
   eval_size: #xy, not rc, same as the camera_chip_size
     - 1041 # y
@@ -110,8 +110,8 @@ Hardware:
   unix_niceness: 0
 
 InOut:
-  experiment_out: '/mnt/sda1/SMLAT/training_runs/'
+  experiment_out: '/home/axtr7550/Chromosome_project/outdata'
   calibration_file: ''
-  filename: '/mnt/sda1/SMLAT/training_runs/model_debug_factor_offset_changed_replisome'
+  filename: '/home/axtr7550/Chromosome_project/outdata/test_cuda_model'
 Meta:
   version:

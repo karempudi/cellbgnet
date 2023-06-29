@@ -219,13 +219,15 @@ class DataSimulator(object):
         else:
             self.use_gpu = False
 
+
+        ### CHANGED HERE
         # initialize cubic spline psf
         if not self.simulation_params['psf_intensity_normalization']:
             self.psf = SMAPSplineCoefficient(self.psf_params['calib_file']).init_spline(
                 xextent=[-0.5, self.img_size-0.5],
                 yextent=[-0.5, self.img_size-0.5],
                 img_shape=[self.img_size, self.img_size],
-                device='cpu',
+                device='cuda',
                 roi_size=None, roi_auto_center=None
             )
         else: # normalize each PSF to 1 before multiplying by photon counts
@@ -233,7 +235,7 @@ class DataSimulator(object):
                 xextent=[-0.5, self.psf_size-0.5],
                 yextent=[-0.5, self.psf_size-0.5],
                 img_shape=[self.psf_size, self.psf_size],
-                device='cpu',
+                device='cuda',
                 roi_size=None, roi_auto_center=None
             )
         
