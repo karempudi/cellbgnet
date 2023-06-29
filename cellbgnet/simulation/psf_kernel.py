@@ -19,7 +19,7 @@ class PSF(ABC):
     forward must be overwritten and shall be called via super().forward(...) before the subclass implementation follows.
     """
 
-    def __init__(self, xextent=(None, None), yextent=(None, None), zextent=None, img_shape=(None, None)):
+    def __init__(self, xextent=(None, None), yextent=(None, None), zextent=None, img_shape=(None, None), normalize=False):
         """
         Constructor to comprise a couple of default attributes
         Args:
@@ -36,6 +36,8 @@ class PSF(ABC):
         self.zextent = zextent
 
         self.img_shape = img_shape
+        
+        self.normalize = normalize
 
     def __str__(self):
         return 'PSF: \n xextent: {}\n yextent: {}\n zextent: {}\n img_shape: {}'.format(self.xextent,
@@ -123,7 +125,8 @@ class CubicSplinePSF(PSF):
 
     def __init__(self, xextent, yextent, img_shape, ref0, coeff, vx_size,
                  *, roi_size: (None, tuple) = None, ref_re: (None, torch.Tensor, tuple) = None,
-                 roi_auto_center: bool = False, device: str = 'cuda:0', max_roi_chunk: int = 500000):
+                 roi_auto_center: bool = False, device: str = 'cuda:0', max_roi_chunk: int = 500000,
+                 normalize: bool = False):
         """
         Initialise Spline PSF
         Args:
@@ -139,7 +142,7 @@ class CubicSplinePSF(PSF):
             max_roi_chunk (int): max number of rois to be processed at a time via the cuda kernel. If you run into
                 memory allocation errors, decrease this number or free some space on your CUDA device.
         """
-        super().__init__(xextent=xextent, yextent=yextent, zextent=None, img_shape=img_shape)
+        super().__init__(xextent=xextent, yextent=yextent, zextent=None, img_shape=img_shape, normalize=normalize)
 
         self._coeff = coeff
         self._roi_native = self._coeff.size()[:2]  # native roi based on the coeff's size
@@ -535,7 +538,7 @@ class CubicSplinePSF(PSF):
                                                   xyz_r[:, 2],
                                                   ix[:, 0],
                                                   ix[:, 1],
-                                                  weight)
+                                                  weight, self.normalize)
 
         frames = torch.from_numpy(frames).reshape(n_frames, *self.img_shape)
         return frames
