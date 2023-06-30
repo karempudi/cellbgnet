@@ -19,7 +19,7 @@ class PSF(ABC):
     forward must be overwritten and shall be called via super().forward(...) before the subclass implementation follows.
     """
 
-    def __init__(self, xextent=(None, None), yextent=(None, None), zextent=None, img_shape=(None, None), normalize=False):
+    def __init__(self, xextent=(None, None), yextent=(None, None), zextent=None, img_shape=(None, None)):
         """
         Constructor to comprise a couple of default attributes
         Args:
@@ -37,7 +37,6 @@ class PSF(ABC):
 
         self.img_shape = img_shape
         
-        self.normalize = normalize
 
     def __str__(self):
         return 'PSF: \n xextent: {}\n yextent: {}\n zextent: {}\n img_shape: {}'.format(self.xextent,
@@ -142,7 +141,9 @@ class CubicSplinePSF(PSF):
             max_roi_chunk (int): max number of rois to be processed at a time via the cuda kernel. If you run into
                 memory allocation errors, decrease this number or free some space on your CUDA device.
         """
-        super().__init__(xextent=xextent, yextent=yextent, zextent=None, img_shape=img_shape, normalize=normalize)
+        super().__init__(xextent=xextent, yextent=yextent, zextent=None, img_shape=img_shape)
+
+        self.normalize = normalize
 
         self._coeff = coeff
         self._roi_native = self._coeff.size()[:2]  # native roi based on the coeff's size
@@ -410,7 +411,7 @@ class CubicSplinePSF(PSF):
         xyz_ = self.coord2impl(xyz_)
         n_rois = xyz.size(0)
 
-        drv_rois, rois = self._spline_impl.forward_drv_rois(xyz_[:, 0], xyz_[:, 1], xyz_[:, 2], phot, bg, add_bg)
+        drv_rois, rois = self._spline_impl.forward_drv_rois(xyz_[:, 0], xyz_[:, 1], xyz_[:, 2], phot, bg, add_bg, self.normalize)
         drv_rois = torch.from_numpy(drv_rois).reshape(n_rois, self.n_par, *self.roi_size_px)
         rois = torch.from_numpy(rois).reshape(n_rois, *self.roi_size_px)
 
