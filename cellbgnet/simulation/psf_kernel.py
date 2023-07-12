@@ -334,7 +334,7 @@ class CubicSplinePSF(PSF):
 
         return xyz_r, xyz_px
 
-    def _forward_rois_impl(self, xyz, phot):
+    def _forward_rois_impl(self, xyz, phot, normalize=False):
         """
         Computes the PSF and outputs the result ROI-wise.
         Args:
@@ -345,13 +345,13 @@ class CubicSplinePSF(PSF):
 
         n_rois = xyz.size(0)  # number of rois / emitters / fluorophores
 
-        out = self._spline_impl.forward_rois(xyz[:, 0], xyz[:, 1], xyz[:, 2], phot)
+        out = self._spline_impl.forward_rois(xyz[:, 0], xyz[:, 1], xyz[:, 2], phot, normalize)
 
         out = torch.from_numpy(out)
         out = out.reshape(n_rois, *self.roi_size_px)
         return out
 
-    def forward_rois(self, xyz, phot):
+    def forward_rois(self, xyz, phot, normalize=False):
         """
         Computes a ROI per position. The emitter is always centred as by the reference of the PSF; i.e. when working
         in px units, adding 1 in x or y direction does not change anything.
@@ -366,7 +366,7 @@ class CubicSplinePSF(PSF):
         xyz_, _ = self.frame2roi_coord(xyz)
         xyz_ = self.coord2impl(xyz_)
 
-        return self._forward_rois_impl(xyz_, phot)
+        return self._forward_rois_impl(xyz_, phot, normalize)
 
     def _forward_drv_chunks(self, xyz: torch.Tensor, weight: torch.Tensor, bg: torch.Tensor, add_bg: bool,
                             chunk_size: int):
