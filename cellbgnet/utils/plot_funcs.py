@@ -348,6 +348,7 @@ class PlotFrameCoord(PlotCoordinates, PlotFrame):
                  plot_colorbar_frame: bool = False,
                  axes_order: Optional[str] = None,
                  annotate_tar_z=False, annotate_out_z=False,
+                 annotate_tar_ph=False, annotate_out_ph=False,
                  frame_cmap='gray'):
 
         PlotCoordinates.__init__(self,
@@ -360,7 +361,9 @@ class PlotFrameCoord(PlotCoordinates, PlotFrame):
                                  labels=labels,
                                  axes_order=axes_order,
                                  annotate_tar_z=annotate_tar_z,
-                                 annotate_out_z=annotate_out_z)
+                                 annotate_out_z=annotate_out_z,
+                                 annotate_tar_ph=annotate_tar_ph,
+                                 annotate_out_ph=annotate_out_ph)
 
         PlotFrame.__init__(self, frame, extent, clim,
                            plot_colorbar=plot_colorbar_frame, 
