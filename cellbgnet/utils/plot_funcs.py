@@ -362,9 +362,7 @@ class PlotFrameCoord(PlotCoordinates, PlotFrame):
                                  axes_order=axes_order,
                                  annotate_tar_z=annotate_tar_z,
                                  annotate_out_z=annotate_out_z,
-                                 annotate_tar_ph=annotate_tar_ph,
-                                 annotate_out_ph=annotate_out_ph)
-
+                                )
         PlotFrame.__init__(self, frame, extent, clim,
                            plot_colorbar=plot_colorbar_frame, 
                            axes_order=axes_order,
