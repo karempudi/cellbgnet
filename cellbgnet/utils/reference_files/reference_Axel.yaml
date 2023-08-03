@@ -1,0 +1,117 @@
+
+
+Simulation:
+  train_size: 128 # size of the images network see
+  train_type: 'cells' # or 'uniform'
+  psf_intensity_normalization: True # false will try to generate all dots at the same time
+  density: 0.003125 # This should put 2 dots in avg cell area 320
+  non_cell_density: 10 # when no cells are there, we use 10 dots per frame
+  margin_empty: 0.05 # what percent of the image you want to leave empty on the image
+  z_prior:
+    - -1
+    - 1
+  survival_prob: # only used if there is local context, so in our case it is not used
+  min_photon: 0.25 # intensity distributions sampled from (min_ph, 1)
+  camera: 'sCMOS'
+  camera_chip_size:
+    - 1041
+    - 1302
+  perlin_noise: False
+  perlin_noise_factor: 0.2 # what fraction of bg photons you want to multiply to get PN noise map
+  perlin_noise_res: 64
+  baseline: 103.0
+  bg_values: 112.0 # background value estimated from the data 
+  e_per_adu: 0.40 # e per adu of the camera
+  qe: 0.95 # quantum efficiency
+  spurious_c: 0.000 # not sure what this is
+  #sig_read: 2.07 # sigma of the read noise in electrons, median value
+  # file or single value should be given
+  sig_read: '/home/axtr7550/Chromosome_project/data/chromosome_dots/pooled_8865/RN_e_venus.tiff'
+  robust_training: False
+
+  cell_masks_dir: '/home/axtr7550/Chromosome_project/data/replisome_dots/pool_3024/phase_venus_mask/'
+  cell_masks_filetype: '.png'
+  edt_noise_map_path: '/home/axtr7550/Chromosome_project/data/replisome_dots/pool_3024/edt_noise.pkl'
+  min_edt: 0
+  max_edt: 6
+  # testing cell rotation augmentation
+  augment: True
+
+
+Network:
+  n_filters: 48
+  n_stages: 2
+  padding: 1
+  kernel_size: 3
+  sig_pred: True
+  psf_pred: True
+  local_context: False # This will just use 1 frame for context, always False for our use-case
+  use_coordconv: True # Use if you want to add xy field on top # later add cell edt coordinate as well
+  factor: 140 # calculate these from data
+  offset: 112 # calculate these from data
+
+
+Train:
+  lr: 0.0006
+  w_decay: 0.1
+  lr_decay: 0.9
+  step_size: 5000 # lr decay step size
+  batch_size: 16
+  max_iters: 50000
+  print_output: True
+  print_freq: 100
+  photon_filter: True
+  photon_filter_threshold: 100
+  P_locs_cse: True # uses cross-entropy loss that is not found in decode
+  robust_training: False # Not relevant so far 
+  clip_gradient_max_norm: 0.03
+
+
+PSF:
+  calib_file: '/home/axtr7550/Chromosome_project/data/splines/bead_3dcal_venus.mat'
+  psf_size: 40 # kinda irrelevant for spline model psf
+  photon_scale: 3000 # i guess max numbeor of photons
+  z_scale: 500 # what range of values you want to have z emitters in 
+  pixel_size_xy:
+    - 65
+    - 65
+
+Evaluation:
+  number_images: 30  # number of images, full camera chip is used
+  use_cell_masks: True # if true masks will be chosen at random
+  density_in_cells: 0.003125 # 
+  # masks directory used to sample number_cell_masks images
+  cell_masks_dir: '/home/axtr7550/Chromosome_project/data/replisome_dots/pool_3024/phase_venus_mask/'
+  cell_masks_filetype: '.png'
+  # pre-computed edt_noise map to generate distributions of bg photons
+  edt_noise_map_path: '/home/axtr7550/Chromosome_project/data/replisome_dots/pool_3024/edt_noise.pkl'
+
+  eval_size: #xy, not rc, same as the camera_chip_size
+    - 1041 # y
+    - 1302 # x 
+  molecules_per_img: 800 # density used in the prob_map creation before sampling coordinates. No cell masks used in this case
+  margin_empty: 0.05 # leave out the boundary
+  candidate_threshold: 0.2
+  nms_threshold: 0.5
+  print_result: False
+  batch_size: 16
+  padded_background: 112 # we will get back to this padded value later
+
+
+
+
+
+
+Hardware:
+  device: cuda:0
+  device_simulation: cuda:0
+  num_worker_train: 4
+  torch_threads: 4
+  unix_niceness: 0
+
+InOut:
+  experiment_out: '/home/axtr7550/Chromosome_project/outdata'
+  calibration_file: ''
+  filename: '/home/axtr7550/Chromosome_project/outdata/test_cuda_model'
+Meta:
+  version:
