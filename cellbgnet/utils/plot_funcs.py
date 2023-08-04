@@ -76,6 +76,7 @@ def plot_psf(calib_file, z_range=500.0, plot_step=25.0, img_size=41,
     for i in range(n_planes, n_rows * n_cols):
         ax[i//n_cols, i%n_cols].remove()
 
+    plt.tight_layout()
     plt.show()
     return rois
 

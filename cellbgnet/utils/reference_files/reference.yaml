@@ -4,7 +4,7 @@ Simulation:
   train_size: 128 # size of the images network see
   train_type: 'cells' # or 'uniform'
   psf_intensity_normalization: True # false will try to generate all dots at the same time
-  density: 0.00625 # This should put 2 dots in avg cell area 320
+  density: 0.003125 # This should put 2 dots in avg cell area 320
   non_cell_density: 10 # when no cells are there, we use 10 dots per frame
   margin_empty: 0.05 # what percent of the image you want to leave empty on the image
   z_prior:
