@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 # data dir
 data/
+ImAnalysis/
 
 # C extensions
 *.so
