@@ -1,18 +1,19 @@
 %% Set path to Imanalysis
-elnDir = '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/EXP-23-CA3057/pool_midway_pos32/fork_outputs';
-addpath([elnDir '/matlabcode/']);
+elnDir = '/home/pk/Documents/cellbgnet/notebooks/PaperFigures/Main/';
+addpath([elnDir '/forkPlotFunctions/']);
 addpath([elnDir '/ImAnalysis/']);
 ImAnalysis_setup([elnDir '/ImAnalysis/']);
 
 %% Load previously build mcells
-mCellsFile = fullfile(elnDir, 'mCells_prob_filtered.mat');
+mCellsFile = fullfile(elnDir, 'data/midway_mCells_prob_filtered_z_corrected.mat');
 [mCells, mFrames] = Cell.MCell.loadMCells(mCellsFile);
 
 %% Convert particles internal coordinates to nanomenters
+
 dots = getParticleList(mCells);
 x = dots.internalCoord(:, 1);
 y = dots.internalCoord(:, 2);
-z = dots.fluoCoord(:, 3);   
+z = dots.fluoCoord(:, 3);
 cell_widths = dots.width(:);
 cell_lengths = dots.length(:);
 y_nm = y .* cell_widths  * 65.0 / 2.0;
@@ -49,9 +50,9 @@ displayForkPlotShortAxis(shorts(noNaNs), areas(noNaNs), widths(noNaNs), counts(n
 % ylim([1 3])
 
 displayForkPlotDepthAxis(depths(noNaNs), areas(noNaNs), widths(noNaNs), counts(noNaNs), ...
-   mean(birthAreas), mean(divisionAreas), mean(initiationAreas), 'BinScale', 80,'HeatMapThreshold',0.9);
+   mean(birthAreas), mean(divisionAreas), mean(initiationAreas), 'BinScale', 80,'HeatMapThreshold',0.8);
 % xlim([-0.5 0.5])
-
+caxis([0 0.0686]);
 %% Plotting distributions of x
 
 
@@ -65,14 +66,18 @@ ylabel('counts')
 %% Plotting distributions of z
 
 figure, hold on
-histogram(z)
+histogram(z, 200, 'Normalization', 'pdf')
 xlabel('z [nm]')
 ylabel('counts')
+[f_z, zi] = ksdensity(z);
+% This will give you peaks, we take midway between peaks and subtract
+% find_peaks(f_z, z_i);
+
 
 %% Plotting y-z as a function of probability
 
 figure, hold on
-histogram2(y_nm, z, 'DisplayStyle', 'tile');
+histogram2(y_nm, z, min(y_nm):10:max(y_nm), min(z):10:max(z),'DisplayStyle', 'tile');
 axis equal;
 xlabel('Y [nm]')
 ylabel('Z [nm]')
@@ -80,35 +85,35 @@ ylabel('Z [nm]')
 
 figure, hold on
 histogram2(z_sigma, z, 'DisplayStyle','tile');
-xlabel('Z sigma [nm]');
+xlabel('\sigma_{Z} [nm]');
 ylabel('Z [nm]');
 
 
 
 figure, hold on
 histogram2(y_sigma, y_nm, 'DisplayStyle','tile');
-xlabel('y sigma [nm]');
+xlabel('\sigma_{Y} [nm]');
 ylabel('y [nm]');
 
 figure, hold on
 histogram2(x_sigma, x, 'DisplayStyle','tile');
-xlabel('X sigma [nm]');
+xlabel('\sigma_{X} [nm]');
 ylabel('X [nm]');
 %% Plotting prob vs x, y, z
-figure, hold on
-histogram2(prob, z, 'DisplayStyle','tile');
-xlabel('probability');
-ylabel('Z [nm]');
-
-
-
-figure, hold on
-histogram2(prob, y_nm, 'DisplayStyle','tile');
-xlabel('probability');
-ylabel('y [nm]');
-
-figure, hold on
-histogram2(prob, x, 'DisplayStyle','tile');
-xlabel('probability');
-ylabel('X [nm]');
+% figure, hold on
+% histogram2(prob, z, 'DisplayStyle','tile');
+% xlabel('probability');
+% ylabel('Z [nm]');
+% 
+% 
+% 
+% figure, hold on
+% histogram2(prob, y_nm, 'DisplayStyle','tile');
+% xlabel('probability');
+% ylabel('y [nm]');
+% 
+% figure, hold on
+% histogram2(prob, x, 'DisplayStyle','tile');
+% xlabel('probability');
+% ylabel('X [nm]');
 

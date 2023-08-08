@@ -1,11 +1,11 @@
 %% Set path to Imanalysis
-elnDir = '/mnt/sda1/SMLAT/data/real_data/chromosome_dots/EXP-23-CA3057/pool_midway_pos32/fork_outputs';
-addpath([elnDir '/matlabcode/']);
+elnDir = '/home/pk/Documents/cellbgnet/notebooks/PaperFigures/Main/';
+addpath([elnDir '/forkPlotFunctions/']);
 addpath([elnDir '/ImAnalysis/']);
 ImAnalysis_setup([elnDir '/ImAnalysis/']);
 
 %% Load previously build mcells
-mCellsFile = fullfile(elnDir, 'mCells_prob_filtered.mat');
+mCellsFile = fullfile(elnDir, 'data/Origin_mCells_prob_filtered_z_corrected.mat');
 [mCells, mFrames] = Cell.MCell.loadMCells(mCellsFile);
 
 %% Convert particles internal coordinates to nanomenters
@@ -72,7 +72,7 @@ ylabel('counts')
 %% Plotting y-z as a function of probability
 
 figure, hold on
-histogram2(y_nm, z, 'DisplayStyle', 'tile');
+histogram2(y_nm, z, min(y_nm):10:max(y_nm), min(z):10:max(z),'DisplayStyle', 'tile');
 axis equal;
 xlabel('Y [nm]')
 ylabel('Z [nm]')
@@ -80,35 +80,35 @@ ylabel('Z [nm]')
 
 figure, hold on
 histogram2(z_sigma, z, 'DisplayStyle','tile');
-xlabel('Z sigma [nm]');
+xlabel('\sigma_{Z} [nm]');
 ylabel('Z [nm]');
 
 
 
 figure, hold on
 histogram2(y_sigma, y_nm, 'DisplayStyle','tile');
-xlabel('y sigma [nm]');
+xlabel('\sigma_{Y} [nm]');
 ylabel('y [nm]');
 
 figure, hold on
 histogram2(x_sigma, x, 'DisplayStyle','tile');
-xlabel('X sigma [nm]');
+xlabel('\sigma_{X} [nm]');
 ylabel('X [nm]');
 %% Plotting prob vs x, y, z
-figure, hold on
-histogram2(prob, z, 'DisplayStyle','tile');
-xlabel('probability');
-ylabel('Z [nm]');
-
-
-
-figure, hold on
-histogram2(prob, y_nm, 'DisplayStyle','tile');
-xlabel('probability');
-ylabel('y [nm]');
-
-figure, hold on
-histogram2(prob, x, 'DisplayStyle','tile');
-xlabel('probability');
-ylabel('X [nm]');
+% figure, hold on
+% histogram2(prob, z, 'DisplayStyle','tile');
+% xlabel('probability');
+% ylabel('Z [nm]');
+% 
+% 
+% 
+% figure, hold on
+% histogram2(prob, y_nm, 'DisplayStyle','tile');
+% xlabel('probability');
+% ylabel('y [nm]');
+% 
+% figure, hold on
+% histogram2(prob, x, 'DisplayStyle','tile');
+% xlabel('probability');
+% ylabel('X [nm]');
 
