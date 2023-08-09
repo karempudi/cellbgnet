@@ -93,12 +93,12 @@ ylabel('Z [nm]');
 figure, hold on
 histogram2(y_sigma, y_nm, 'DisplayStyle','tile');
 xlabel('\sigma_{Y} [nm]');
-ylabel('y [nm]');
+ylabel('Y [nm]');
 
 figure, hold on
 histogram2(x_sigma, x, 'DisplayStyle','tile');
 xlabel('\sigma_{X} [nm]');
-ylabel('X [nm]');
+ylabel('Internal X');
 %% Plotting prob vs x, y, z
 % figure, hold on
 % histogram2(prob, z, 'DisplayStyle','tile');

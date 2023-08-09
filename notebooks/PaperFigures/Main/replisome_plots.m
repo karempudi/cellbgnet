@@ -16,7 +16,7 @@ z = dots.fluoCoord(:, 3);
 cell_widths = dots.width(:);
 cell_lengths = dots.length(:);
 y_nm = y .* cell_widths  * 65.0 / 2.0;
-x_nm = x .* cell_lengths * 65.0;
+x_nm = x .* cell_lengths * 65.0 / 1000.0;
 x_sigma = dots.err(:, 1);
 y_sigma = dots.err(:, 2);
 z_sigma = dots.err(:, 3);
@@ -93,7 +93,7 @@ ylabel('y [nm]');
 figure, hold on
 histogram2(x_sigma, x, 'DisplayStyle','tile');
 xlabel('\sigma_{X} [nm]');
-ylabel('X [nm]');
+ylabel('Internal X');
 %% Plotting prob vs x, y, z
 % figure, hold on
 % histogram2(prob, z, 'DisplayStyle','tile');
