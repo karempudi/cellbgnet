@@ -75,6 +75,7 @@ figure, hold on
 histogram2(y_nm, z, min(y_nm):10:max(y_nm), min(z):10:max(z),'DisplayStyle', 'tile');
 axis equal;
 xlabel('Y [nm]')
+xticks([-500 -250 0 250 500]);
 ylabel('Z [nm]')
 %% Plotting sigmas
 

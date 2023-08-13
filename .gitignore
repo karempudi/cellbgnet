@@ -5,6 +5,7 @@ __pycache__/
 # data dir
 data/
 ImAnalysis/
+*.asv
 
 # C extensions
 *.so
