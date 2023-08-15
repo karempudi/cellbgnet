@@ -192,6 +192,19 @@ class LossFuncs:
         return loss_cse
 
     # dice loss
+    def dice_loss(self, P, locs):
+        cost_dice = 1- (2*locs*P + 1)/(locs + P + 1)
+        loss_dice = cost_dice.sum(-1).sum(-1)
+        return loss_dice
+    
+    
+    #Focal loss
+    def focal_loss(self, P, locs, alpha, gamma):
+        # Implement phocal loss, more appropriate for imbalanced classes 
+        loss_foc = -(alpha[0] * locs * torch.log(P) * (1-P)**gamma + alpha[1] * (1 - locs) * torch.log(1 - P) * (P)**gamma)
+        loss_foc = loss_foc.sum(-1).sum(-1)
+        
+        return loss_foc
 
     # Count loss
     def count_loss_analytical(self, P, s_mask):
