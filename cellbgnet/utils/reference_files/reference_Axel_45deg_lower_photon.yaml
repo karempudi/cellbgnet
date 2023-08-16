@@ -4,14 +4,20 @@ Simulation:
   train_size: 128 # size of the images network see
   train_type: 'cells' # or 'uniform'
   psf_intensity_normalization: True # false will try to generate all dots at the same time
-  density: 0.003125 # This should put 2 dots in avg cell area 320
+  density: 0.00625 # This should put 2 dots in avg cell area 320
   non_cell_density: 10 # when no cells are there, we use 10 dots per frame
   margin_empty: 0.05 # what percent of the image you want to leave empty on the image
   z_prior:
     - -1
     - 1
   survival_prob: # only used if there is local context, so in our case it is not used
-  min_photon: 0.10 # intensity distributions sampled from (min_ph, 1)
+  min_photon: 0.23 # intensity distributions sampled from (min_ph, 1)
+  z_normal_distribution: True #
+  z_mean: 0.4 # scaled 0 to 1 
+  z_std: 0.2 # scaled 0 to 1
+  photon_normal_distribution: True #
+  photon_mean: 0.07
+  photon_std: 0.08
   camera: 'sCMOS'
   camera_chip_size:
     - 1041
@@ -21,7 +27,7 @@ Simulation:
   perlin_noise_res: 64
   baseline: 103.0
   bg_values: 112.0 # background value estimated from the data 
-  e_per_adu: 0.40 # e per adu of the camera
+  e_per_adu: 0.38 # e per adu of the camera
   qe: 0.95 # quantum efficiency
   spurious_c: 0.000 # not sure what this is
   #sig_read: 2.07 # sigma of the read noise in electrons, median value
@@ -29,9 +35,9 @@ Simulation:
   sig_read: '/home/axtr7550/Chromosome_project/data/chromosome_dots/pooled_8865/RN_e_venus.tiff'
   robust_training: False
 
-  cell_masks_dir: '/home/axtr7550/Chromosome_project/data/replisome_dots/pool_3024/phase_venus_mask/'
+  cell_masks_dir: '/home/axtr7550/Chromosome_project/data/chromosome_dots/pooled_8865/phase_venus_mask/'
   cell_masks_filetype: '.png'
-  edt_noise_map_path: '/home/axtr7550/Chromosome_project/data/replisome_dots/pool_3024/edt_noise.pkl'
+  edt_noise_map_path: '/home/axtr7550/Chromosome_project/data/chromosome_dots/pooled_8865/edt_noise.pkl'
   min_edt: 0
   max_edt: 6
   # testing cell rotation augmentation
@@ -77,9 +83,9 @@ PSF:
     - 65
 
 Evaluation:
-  number_images: 200  # number of images, full camera chip is used
+  number_images: 40  # number of images, full camera chip is used
   use_cell_masks: True # if true masks will be chosen at random
-  density_in_cells: 0.003125 # 
+  density_in_cells: 0.00625 # 
   # masks directory used to sample number_cell_masks images
   cell_masks_dir: '/home/axtr7550/Chromosome_project/data/replisome_dots/pool_3024/phase_venus_mask/'
   cell_masks_filetype: '.png'

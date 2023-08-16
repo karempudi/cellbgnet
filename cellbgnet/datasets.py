@@ -483,12 +483,18 @@ class DataSimulator(object):
         # Every pixel has a probability blink_p of having a molecule, following binonmial distribution
         locs1 = torch.distributions.Binomial(1, blink_p).sample().to(self.device)
         zeros = torch.zeros_like(locs1).to(self.device)
-
-        # z positions are uniform distributino with a predefined range
-        z = torch.distributions.Uniform(zeros + self.simulation_params['z_prior'][0],
-                                        zeros + self.simulation_params['z_prior'][1]).sample().to(self.device)
         
-        # xy offest follow uniform distribution
+        z_mean = self.simulation_params['z_mean']
+        z_std = self.simulation_params['z_std']
+        if self.simulation_params['z_normal_distribution']:
+            z = torch.distributions.Normal(zeros + z_mean, zeros + z_std).sample().to(self.device)
+            z = torch.clamp(z, min=self.simulation_params['z_prior'][0], max=self.simulation_params['z_prior'][1])
+        else:
+            # z positions are uniform distributino with a predefined range
+            z = torch.distributions.Uniform(zeros + self.simulation_params['z_prior'][0],
+                  zeros + self.simulation_params['z_prior'][1]).sample().to(self.device)
+
+            # xy offest follow uniform distribution
         x_os = torch.distributions.Uniform(zeros - 0.5, zeros + 0.5).sample().to(self.device)
         y_os = torch.distributions.Uniform(zeros - 0.5, zeros + 0.5).sample().to(self.device)
 
@@ -504,9 +510,18 @@ class DataSimulator(object):
         else:
             locs = locs1
 
+
         if constant_photon_counts == False:
             # photon number is sampled from a  uniform distribution
-            ints = torch.distributions.Uniform(torch.zeros_like(locs) + self.simulation_params['min_photon'],
+            if self.simulation_params['photon_normal_distribution']:
+                phot_mean = self.simulation_params['photon_mean']
+                phot_std = self.simulation_params['photon_std']
+                #ints = torch.distributions.Normal(zeros + phot_mean, zeros + phot_std).sample().to(self.device)
+                ints = torch.distributions.exponential.Exponential(zeros + 1/phot_mean).sample().to(self.device)
+                ints += self.simulation_params['min_photon']
+                ints = torch.clamp(ints, max=1)
+            else:
+                ints = torch.distributions.Uniform(torch.zeros_like(locs) + self.simulation_params['min_photon'],
                                         torch.ones_like(locs)).sample().to(self.device)
         else:
             ints = 0.75 * torch.ones_like(locs).to(self.device)
