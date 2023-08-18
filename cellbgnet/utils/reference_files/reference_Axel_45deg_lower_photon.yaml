@@ -11,11 +11,11 @@ Simulation:
     - -1
     - 1
   survival_prob: # only used if there is local context, so in our case it is not used
-  min_photon: 0.23 # intensity distributions sampled from (min_ph, 1)
+  min_photon: 0.6 # intensity distributions sampled from (min_ph, 1)
   z_normal_distribution: True #
   z_mean: 0.4 # scaled 0 to 1 
   z_std: 0.2 # scaled 0 to 1
-  photon_normal_distribution: True #
+  photon_normal_distribution: False #
   photon_mean: 0.07
   photon_std: 0.08
   camera: 'sCMOS'
@@ -76,7 +76,7 @@ Train:
 PSF:
   calib_file: '/home/axtr7550/Chromosome_project/data/splines/bead_3dcal_45_venus.mat'
   psf_size: 40 # kinda irrelevant for spline model psf
-  photon_scale: 3000 # i guess max numbeor of photons
+  photon_scale: 1000 # i guess max numbeor of photons
   z_scale: 500 # what range of values you want to have z emitters in 
   pixel_size_xy:
     - 65
