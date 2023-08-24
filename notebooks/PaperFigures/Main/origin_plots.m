@@ -5,7 +5,7 @@ addpath([elnDir '/ImAnalysis/']);
 ImAnalysis_setup([elnDir '/ImAnalysis/']);
 
 %% Load previously build mcells
-mCellsFile = fullfile(elnDir, 'data/Origin_mCells_prob_filtered_z_corrected.mat');
+mCellsFile = fullfile(elnDir, 'data/Origin_mCells_prob_filtered_z_corrected_dilated.mat');
 [mCells, mFrames] = Cell.MCell.loadMCells(mCellsFile);
 
 %% Convert particles internal coordinates to nanomenters
@@ -72,7 +72,7 @@ ylabel('counts')
 %% Plotting y-z as a function of probability
 
 figure, hold on
-histogram2(y_nm, z, min(y_nm):10:max(y_nm), min(z):10:max(z),'DisplayStyle', 'tile');
+histogram2(y_nm, z, min(y_nm):20:max(y_nm), min(z):20:max(z),'DisplayStyle', 'tile');
 axis equal;
 xlabel('Y [nm]')
 ylabel('Z [nm]')
