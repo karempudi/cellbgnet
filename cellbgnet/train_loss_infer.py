@@ -6,6 +6,7 @@ from skimage.io import imread
 from skimage import segmentation
 from cellbgnet.utils.hardware import cpu, gpu
 from skimage.transform import rotate
+import matplotlib.pyplot as plt
 
 def generate_probmap_cells(image, batch_size, train_size, density_in_cells, density_if_no_cells,
              margin_empty, augment=False):
@@ -86,11 +87,11 @@ class TrainFuncs:
         if simulation_params['train_type'] != 'cells':
             prob_map = np.zeros([self.batch_size, train_size, train_size])
             # remove the the margins
-            prob_map[0, int(simulation_params['margin_empty'] * train_size):
+            prob_map[:, int(simulation_params['margin_empty'] * train_size):
                 int((1 - simulation_params['margin_empty']) * train_size),
                 int(simulation_params['margin_empty'] * train_size):
                 int((1 - simulation_params['margin_empty']) * train_size)] += 1
-            prob_map = prob_map / prob_map.sum() * density
+            prob_map *= density
 
             # bg returned by datasimulator is just the psf and not the bg
             imgs_sim, xyzi_gt, s_mask, psf_imgs_gt, locs, field_xy = self.data_generator.simulate_data( 

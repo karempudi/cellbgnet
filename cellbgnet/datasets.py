@@ -399,10 +399,20 @@ class DataSimulator(object):
 
                 bg_sampled_ADU = torch.distributions.gamma.Gamma(concentration=alpha_t, rate=beta_t).sample()
                 bg_photons = ((bg_sampled_ADU - self.simulation_params['baseline']) * self.simulation_params['e_per_adu'])/ self.simulation_params['qe']
-                bg_photons = bg_photons[:, None]
+                bg_photons = bg_photons[:, None] # add an extra dimension so that bg_photons becomes [batch_size, 1, H, W]
                 bg_photons = torch.clamp(bg_photons, min=0.0)
             else:
-                bg_photons = ((self.simulation_params['bg_values'] - self.simulation_params['baseline']) * self.simulation_params['e_per_adu']) / self.simulation_params['qe']
+                # will sample batch_size number of values
+                bg_sampled_ADU = torch.distributions.Uniform(low=(self.simulation_params['bg_values'] - self.simulation_params['bg_width']),
+                                                             high=(self.simulation_params['bg_values'] + self.simulation_params['bg_width'])).sample(sample_shape=torch.Size([imgs_sim.shape[0]]))
+
+                bg_sampled_ADU = bg_sampled_ADU[:, None, None]
+                # batch_size, H, W
+                bg_sampled_ADU = torch.ones((imgs_sim.shape[0], imgs_sim.shape[2], imgs_sim.shape[3])) * bg_sampled_ADU
+                bg_photons = ((bg_sampled_ADU - self.simulation_params['baseline']) * self.simulation_params['e_per_adu']) / self.simulation_params['qe']
+                bg_photons = bg_photons[:, None] # batchsize, 1, H, W
+                bg_photons = torch.clamp(bg_photons, min=0.0)
+
 
             #if bg_photons.a<  0:
             #    print('Converted bg_photons is less than 0, please check parameters, bg_values and baseline')
@@ -449,7 +459,6 @@ class DataSimulator(object):
 
                 zeros = torch.zeros_like(imgs_sim)
                 readout_noise = torch.distributions.Normal(zeros, zeros + RN).sample()
-
                 # add read out noise
                 imgs_sim = imgs_sim + readout_noise
                 # convert off the electrons into ADU's and then 

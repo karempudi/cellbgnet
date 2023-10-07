@@ -41,60 +41,78 @@ noNaNs = find(~isnan(longs));
 displayForkPlot(longs(noNaNs), areas(noNaNs), lengths(noNaNs), counts(noNaNs), ...
     mean(birthAreas), mean(divisionAreas), mean(initiationAreas), 'BinScale', 15, 'HeatMapThreshold',0.95);
 xlim([-3 3])
-ylim([0.8 2.4])
+ylim([1.0 2.7])
+ax = gca;
+ax.FontSize = 14;
 
 displayForkPlotShortAxis(shorts(noNaNs), areas(noNaNs), widths(noNaNs), counts(noNaNs), ...
     mean(birthAreas), mean(divisionAreas), mean(initiationAreas), 'BinScale', 80, 'HeatMapThreshold',0.9);
-% xlim([-0.5 0.5])
-% ylim([1 3])
+xlim([-0.45 0.45])
+ylim([1.0 2.7])
+ax = gca;
+ax.FontSize = 14;
 
 displayForkPlotDepthAxis(depths(noNaNs), areas(noNaNs), widths(noNaNs), counts(noNaNs), ...
    mean(birthAreas), mean(divisionAreas), mean(initiationAreas), 'BinScale', 80,'HeatMapThreshold',0.9);
-% xlim([-0.5 0.5])
-
+xlim([-0.45 0.45])
+ylim([1.0 2.7])
+ax = gca;
+ax.FontSize = 14;
 %% Plotting distributions of x
 
 
 %% Plotting distributions of y
 figure, hold on
 histogram(y_nm)
-xlabel('Y [nm]')
-ylabel('counts')
+xlabel('Y [nm]', 'FontSize', 14)
+ylabel('Counts', 'FontSize', 14)
 
 
 %% Plotting distributions of z
 
 figure, hold on
 histogram(z)
-xlabel('z [nm]')
-ylabel('counts')
+xlabel('Z [nm]', 'FontSize', 14)
+ylabel('counts', 'FontSize', 14)
 
 %% Plotting y-z as a function of probability
 
 figure, hold on
 histogram2(y_nm, z, min(y_nm):20:max(y_nm), min(z):20:max(z),'DisplayStyle', 'tile');
 axis equal;
-xlabel('Y [nm]')
-xticks([-500 -250 0 250 500]);
-ylabel('Z [nm]')
+xlabel('Y [nm]', 'FontSize',14)
+ylabel('Z [nm]', 'FontSize',14)
+xticks([-500, -250, 0, 250, 500]);
+colorbar();
+ax = gca;
+ax.FontSize = 14;
 %% Plotting sigmas
 
 figure, hold on
 histogram2(z_sigma, z, 'DisplayStyle','tile');
-xlabel('\sigma_{Z} [nm]');
-ylabel('Z [nm]');
+xlabel('\sigma_{Z} [nm]', 'FontSize', 14);
+ylabel('Z [nm]', 'FontSize', 14);
+colorbar();
+ax = gca;
+ax.FontSize = 14;
 
 
 
 figure, hold on
 histogram2(y_sigma, y_nm, 'DisplayStyle','tile');
-xlabel('\sigma_{Y} [nm]');
-ylabel('y [nm]');
+xlabel('\sigma_{Y} [nm]', 'FontSize',14);
+ylabel('Y [nm]', 'FontSize', 14);
+colorbar();
+ax = gca;
+ax.FontSize = 14;
 
 figure, hold on
 histogram2(x_sigma, x, 'DisplayStyle','tile');
-xlabel('\sigma_{X} [nm]');
-ylabel('Internal X');
+xlabel('\sigma_{X} [nm]', 'FontSize',14);
+ylabel('Internal X', 'FontSize', 14);
+colorbar();
+ax = gca;
+ax.FontSize = 14;
 %% Plotting prob vs x, y, z
 % figure, hold on
 % histogram2(prob, z, 'DisplayStyle','tile');

@@ -151,7 +151,7 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
 
             # Set the probablity map 
             number_images = self.evaluation_params['number_images']
-            prob_map = np.ones([number_images, eval_size_x, eval_size_y])
+            prob_map = np.ones([number_images, eval_size_y, eval_size_x])
             # no molecules on the boundary
             prob_map[:, int(self.evaluation_params['margin_empty'] * eval_size_y): int((1 - self.evaluation_params['margin_empty']) * eval_size_y),
                         int(self.evaluation_params['margin_empty'] * eval_size_x): int((1 - self.evaluation_params['margin_empty']) * eval_size_x)] += 1
@@ -174,10 +174,17 @@ class CellBGModel(TrainFuncs, LossFuncs, InferFuncs):
         eval_imgs = np.zeros([1, eval_size_y, eval_size_x])
 
         for j in tqdm(range(self.evaluation_params['number_images']), desc='Eval image generation'):
-            imgs_sim, xyzi_mat, s_mask, psf_est, locs, field_xy = self.data_generator.simulate_data(
-                    prob_map=gpu(prob_map[j][None, :]), batch_size=1, local_context=self.local_context,
-                    photon_filter=False, photon_filter_threshold=0, P_locs_cse=False,
-                    iter_num=self._iter_count, train_size=eval_size_x, cell_masks=cell_masks_batch[j][np.newaxis, :])
+            if self.evaluation_params['use_cell_masks'] == False:
+
+                imgs_sim, xyzi_mat, s_mask, psf_est, locs, field_xy = self.data_generator.simulate_data(
+                        prob_map=gpu(prob_map[j][None, :]), batch_size=1, local_context=self.local_context,
+                        photon_filter=False, photon_filter_threshold=0, P_locs_cse=False,
+                        iter_num=self._iter_count, train_size=eval_size_x, cell_masks=None)
+            else:
+                imgs_sim, xyzi_mat, s_mask, psf_est, locs, field_xy = self.data_generator.simulate_data(
+                        prob_map=gpu(prob_map[j][None, :]), batch_size=1, local_context=self.local_context,
+                        photon_filter=False, photon_filter_threshold=0, P_locs_cse=False,
+                        iter_num=self._iter_count, train_size=eval_size_x, cell_masks=cell_masks_batch[j][np.newaxis, :])
             imgs_tmp = cpu(imgs_sim)[:, 1] if self.local_context else cpu(imgs_sim)[:, 0]
             eval_imgs = np.concatenate((eval_imgs, imgs_tmp), axis = 0)
             
