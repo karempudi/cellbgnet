@@ -11,7 +11,7 @@ Simulation:
     - -1
     - 1
   survival_prob: # only used if there is local context, so in our case it is not used
-  min_photon: 0.05 # intensity distributions sampled from (min_ph, 1)
+  min_photon: 0.15 # intensity distributions sampled from (min_ph, 1)
   camera: 'sCMOS'
   camera_chip_size:
     - 1041
@@ -20,8 +20,8 @@ Simulation:
   perlin_noise_factor: 0.2 # what fraction of bg photons you want to multiply to get PN noise map
   perlin_noise_res: 64
   baseline: 103.0
-  bg_values: 600.0 # background value estimated from the data 
-  bg_width: 150 # in case of uniform background model, bg values are sampled from uniform dist [bg_values - bg_width, bg_value + bg_width]
+  bg_values: 112.0 # background value estimated from the data 
+  bg_width: 20 # in case of uniform background model, bg values are sampled from uniform dist [bg_values - bg_width, bg_value + bg_width]
   e_per_adu: 0.38 # e per adu of the camera
   qe: 0.95 # quantum efficiency
   spurious_c: 0.000 # not sure what this is
@@ -48,8 +48,8 @@ Network:
   psf_pred: True
   local_context: False # This will just use 1 frame for context, always False for our use-case
   use_coordconv: True # Use if you want to add xy field on top # later add cell edt coordinate as well
-  factor: 640 # calculate these from data
-  offset: 600 # calculate these from data
+  factor: 140 # calculate these from data
+  offset: 112 # calculate these from data
 
 
 Train:
@@ -71,7 +71,7 @@ Train:
 PSF:
   calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal_45_venus.mat'
   psf_size: 40 # kinda irrelevant for spline model psf
-  photon_scale: 200000 # i guess max numbeor of photons
+  photon_scale: 5000 # i guess max numbeor of photons
   z_scale: 700 # what range of values you want to have z emitters in 
   pixel_size_xy:
     - 65
@@ -113,6 +113,6 @@ Hardware:
 InOut:
   experiment_out: '/mnt/sda1/SMLAT/training_runs/'
   calibration_file: ''
-  filename: '/mnt/sda1/SMLAT/training_runs/model_rotated_45_venus_beads_changed_factor_offset'
+  filename: '/mnt/sda1/SMLAT/training_runs/model_rotated_45_venus_beads'
 Meta:
   version:
