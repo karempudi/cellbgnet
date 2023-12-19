@@ -767,8 +767,9 @@ def limited_matching(truth_origin, pred_list_origin, min_int, limited_x=[0, 2048
     MSE_vol = 0
 
     if len(pred_list):
+        print(f"Length of preds_list: {len(pred_list)}")
         for i in range(1, int(truth_origin[-1][1]) + 1):  # traverse all gt frames
-
+            print(f"Frame numbers: {i}")
             tests = []  # gt in each frame
             preds = []  # prediction in each frame
 
@@ -782,7 +783,7 @@ def limited_matching(truth_origin, pred_list_origin, min_int, limited_x=[0, 2048
                     preds.append(pred_list.pop(0))  # put all predictions in the preds
                     if len(pred_list) < 1:
                         break
-
+            print(len(tests), len(preds))
             # if preds is empty, it means no detection on the frame, all tests are FN
             if len(preds) == 0:
                 FN += len(tests)
@@ -791,12 +792,10 @@ def limited_matching(truth_origin, pred_list_origin, min_int, limited_x=[0, 2048
             if len(tests) == 0:
                 FP += len(preds)
                 continue  # no need to calculate metric
-            #print(len(tests), len(preds))
             # calculate the Euclidean distance between all gt and preds, get a matrix [number of gt, number of preds]
             dist_arr = cdist(np.array(tests)[:, 2:4], np.array(preds)[:, 2:4])
             ax_arr = cdist(np.array(tests)[:, 4:5], np.array(preds)[:, 4:5])
             tot_arr = np.sqrt(dist_arr ** 2 + ax_arr ** 2)
-
             if tolerance_ax == np.inf:
                 tot_arr = dist_arr
 
