@@ -767,9 +767,9 @@ def limited_matching(truth_origin, pred_list_origin, min_int, limited_x=[0, 2048
     MSE_vol = 0
 
     if len(pred_list):
-        print(f"Length of preds_list: {len(pred_list)}")
+        #print(f"Length of preds_list: {len(pred_list)}")
         for i in range(1, int(truth_origin[-1][1]) + 1):  # traverse all gt frames
-            print(f"Frame numbers: {i}")
+            #print(f"Frame numbers: {i}")
             tests = []  # gt in each frame
             preds = []  # prediction in each frame
 
@@ -783,7 +783,7 @@ def limited_matching(truth_origin, pred_list_origin, min_int, limited_x=[0, 2048
                     preds.append(pred_list.pop(0))  # put all predictions in the preds
                     if len(pred_list) < 1:
                         break
-            print(len(tests), len(preds))
+            #print(len(tests), len(preds))
             # if preds is empty, it means no detection on the frame, all tests are FN
             if len(preds) == 0:
                 FN += len(tests)
@@ -1166,3 +1166,186 @@ def assemble_full_img_predictions(model, plot_infs, pad_h=3, pad_w=2):
 
     return img_infs
 
+
+def match_two_frames(truth_origin, pred_list_origin, min_int, limited_x=[0, 204800], limited_y=[0, 204800],
+                     border=450, print_res=True, tolerance=250, tolerance_ax=np.inf):
+    #print('{}{}{}{}'.format('FOV: x=', limited_x, ' y=', limited_y))
+
+    matches = []
+
+    truth = copy.deepcopy(truth_origin)
+    pred_list = copy.deepcopy(pred_list_origin)
+
+    truth_array = np.array(truth)
+    pred_array = np.array(pred_list)
+
+    # filter prediction and gt according to limited_x;y
+    t_inds = np.where(
+        (truth_array[:, 2] < limited_x[0]) | (truth_array[:, 2] > limited_x[1]) |
+        (truth_array[:, 3] < limited_y[0]) | (truth_array[:, 3] > limited_y[1]))
+    p_inds = np.where(
+        (pred_array[:, 2] < limited_x[0]) | (pred_array[:, 2] > limited_x[1]) |
+        (pred_array[:, 3] < limited_y[0]) | (pred_array[:, 3] > limited_y[1]))
+    for t in reversed(t_inds[0]):
+        del (truth[t])
+    for p in reversed(p_inds[0]):
+        del (pred_list[p])
+
+    if len(pred_list) == 0:
+        perf_dict = {'recall': np.nan, 'precision': np.nan, 'jaccard': np.nan, 'f_score': np.nan, 'rmse_lat': np.nan,
+                     'rmse_ax': np.nan,
+                     'rmse_x': np.nan, 'rmse_y': np.nan, 'jor': np.nan, 'eff_lat': np.nan, 'eff_ax': np.nan,
+                     'eff_3d': np.nan}
+        print('after FOV segmentation, pred_list is empty!')
+        return perf_dict, matches
+    #print('{}{}{}{}{}'.format('after FOV and border segmentation,', 'truth: ', len(truth), ' ,preds: ', len(pred_list)))
+    # delete molecules of ground truth/estimation in the margin area
+    if border:
+        test_arr = np.array(truth)
+        pred_arr = np.array(pred_list)
+
+        t_inds = np.where(
+            (test_arr[:, 2] < limited_x[0] + border) | (test_arr[:, 2] > (limited_x[1] - border)) |
+            (test_arr[:, 3] < limited_y[0] + border) | (test_arr[:, 3] > (limited_y[1] - border)))
+        p_inds = np.where(
+            (pred_arr[:, 2] < limited_x[0] + border) | (pred_arr[:, 2] > (limited_x[1] - border)) |
+            (pred_arr[:, 3] < limited_y[0] + border) | (pred_arr[:, 3] > (limited_y[1] - border)))
+        for t in reversed(t_inds[0]):
+            del (truth[t])
+        for p in reversed(p_inds[0]):
+            del (pred_list[p])
+
+    if len(pred_list) == 0:
+        perf_dict = {'recall': np.nan, 'precision': np.nan, 'jaccard': np.nan, 'f_score': np.nan, 'rmse_lat': np.nan,
+                     'rmse_ax': np.nan,
+                     'rmse_x': np.nan, 'rmse_y': np.nan, 'jor': np.nan, 'eff_lat': np.nan, 'eff_ax': np.nan,
+                     'eff_3d': np.nan}
+        print('after border, pred_list is empty!')
+        return perf_dict, matches
+
+    #print('{}{}{}{}{}'.format('after FOV and border segmentation,', 'truth: ', len(truth), ' ,preds: ', len(pred_list)))
+
+    TP = 0
+    FP = 0.0001
+    FN = 0.0001
+    MSE_lat = 0
+    MSE_ax = 0
+    MSE_vol = 0
+
+    if len(pred_list):
+        #print(f"Length of preds_list: {len(pred_list)}")
+        tests = copy.deepcopy(truth)  # gt in each frame
+        preds = copy.deepcopy(pred_list)  # prediction in each frame
+
+        #if len(truth) > 0:  # after border filtering and area segmentation, truth could be empty
+        #    while truth[0][1] == i:
+        #        tests.append(truth.pop(0))  # put all gt in the tests
+        #        if len(truth) < 1:
+        #            break
+        #if len(pred_list) > 0:
+        #    while pred_list[0][1] == i:
+        #        preds.append(pred_list.pop(0))  # put all predictions in the preds
+        #        if len(pred_list) < 1:
+        #            break
+        #print(len(tests), len(preds))
+        # if preds is empty, it means no detection on the frame, all tests are FN
+        if len(preds) == 0:
+            FN += len(tests)
+            # no need to calculate metric
+        # if the gt of this frame is empty, all preds on this frame are FP
+        if len(tests) == 0:
+            FP += len(preds)
+            # no need to calculate metric
+        # calculate the Euclidean distance between all gt and preds, get a matrix [number of gt, number of preds]
+        dist_arr = cdist(np.array(tests)[:, 2:4], np.array(preds)[:, 2:4])
+        ax_arr = cdist(np.array(tests)[:, 4:5], np.array(preds)[:, 4:5])
+        tot_arr = np.sqrt(dist_arr ** 2 + ax_arr ** 2)
+        if tolerance_ax == np.inf:
+            tot_arr = dist_arr
+
+        match_tests = copy.deepcopy(tests)
+        match_preds = copy.deepcopy(preds)
+        #print(dist_arr)
+        if dist_arr.size > 0:
+            while dist_arr.min() < tolerance:
+                r, c = np.where(tot_arr == tot_arr.min())  # select the positions pair with shortest distance
+                r = r[0]
+                c = c[0]
+                if ax_arr[r, c] < tolerance_ax and dist_arr[r, c] < tolerance:  # compare the distance and tolerance
+                    if match_tests[r][5] > min_int:  # photons should be larger than min_int
+
+                        MSE_lat += dist_arr[r, c] ** 2
+                        MSE_ax += ax_arr[r, c] ** 2
+                        MSE_vol += dist_arr[r, c] ** 2 + ax_arr[r, c] ** 2
+                        TP += 1
+                        matches.append([match_tests[r][2], match_tests[r][3], match_tests[r][4], match_tests[r][5],
+                                        match_preds[c][2], match_preds[c][3], match_preds[c][4], match_preds[c][5],
+                                        match_preds[c][7], match_preds[c][8], match_preds[c][9],
+                                        match_preds[c][10]])
+
+                    dist_arr[r, :] = np.inf
+                    dist_arr[:, c] = np.inf
+                    tot_arr[r, :] = np.inf
+                    tot_arr[:, c] = np.inf
+
+                    tests[r][5] = -100  # photon cannot be negative, work as a flag
+                    preds.pop()
+
+                dist_arr[r, c] = np.inf
+                tot_arr[r, c] = np.inf
+                #print("matched one")
+
+        for i in reversed(range(len(tests))):
+            if tests[i][5] < min_int:  # delete matched gt
+                del (tests[i])
+
+        FP += len(preds)  # all remaining preds are FP
+        FN += len(tests)  # all remaining gt are FN
+    else:
+        print('after border and FOV segmentation, pred list is empty!')
+
+    precision = TP / (TP + FP)
+    recall = TP / (TP + FN)
+    jaccard = TP / (TP + FP + FN)
+    rmse_lat = np.sqrt(MSE_lat / (TP + 0.00001))
+    rmse_ax = np.sqrt(MSE_ax / (TP + 0.00001))
+    rmse_vol = np.sqrt(MSE_vol / (TP + 0.00001))
+    jor = 100 * jaccard / rmse_lat
+
+    eff_lat = 100 - np.sqrt((100 - 100 * jaccard) ** 2 + 1 ** 2 * rmse_lat ** 2)
+    eff_ax = 100 - np.sqrt((100 - 100 * jaccard) ** 2 + 0.5 ** 2 * rmse_ax ** 2)
+    eff_3d = (eff_lat + eff_ax) / 2
+
+    matches = np.array(matches)
+    #print("Number of matches: ", matches.shape)
+    rmse_x = np.nan
+    rmse_y = np.nan
+    rmse_z = np.nan
+    rmse_i = np.nan
+    if len(matches):
+        rmse_x = np.sqrt(((matches[:, 0] - matches[:, 4]) ** 2).mean())
+        rmse_y = np.sqrt(((matches[:, 1] - matches[:, 5]) ** 2).mean())
+        rmse_z = np.sqrt(((matches[:, 2] - matches[:, 6]) ** 2).mean())
+        rmse_i = np.sqrt(((matches[:, 3] - matches[:, 7]) ** 2).mean())
+    else:
+        print('matches is empty!')
+
+    if print_res:
+        print('{}{:0.3f}'.format('Recall: ', recall))
+        print('{}{:0.3f}'.format('Precision: ', precision))
+        print('{}{:0.3f}'.format('Jaccard: ', 100 * jaccard))
+        print('{}{:0.3f}'.format('RMSE_lat: ', rmse_lat))
+        print('{}{:0.3f}'.format('RMSE_ax: ', rmse_ax))
+        print('{}{:0.3f}'.format('RMSE_vol: ', rmse_vol))
+        print('{}{:0.3f}'.format('Jaccard/RMSE: ', jor))
+        print('{}{:0.3f}'.format('Eff_lat: ', eff_lat))
+        print('{}{:0.3f}'.format('Eff_ax: ', eff_ax))
+        print('{}{:0.3f}'.format('Eff_3d: ', eff_3d))
+        print('FN: ' + str(np.round(FN)) + ' FP: ' + str(np.round(FP)))
+
+    perf_dict = {'recall': recall, 'precision': precision, 'jaccard': jaccard, 'rmse_lat': rmse_lat,
+                 'rmse_ax': rmse_ax, 'rmse_vol': rmse_vol, 'rmse_x': rmse_x, 'rmse_y': rmse_y,
+                 'rmse_z': rmse_z, 'rmse_i': rmse_i, 'jor': jor, 'eff_lat': eff_lat, 'eff_ax': eff_ax,
+                 'eff_3d': eff_3d}
+
+    return perf_dict, matches
