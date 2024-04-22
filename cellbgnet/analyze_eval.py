@@ -1178,7 +1178,12 @@ def match_two_frames(truth_origin, pred_list_origin, min_int, limited_x=[0, 2048
 
     truth_array = np.array(truth)
     pred_array = np.array(pred_list)
-
+    if (len(pred_array) == 0):
+        perf_dict = {'recall': np.nan, 'precision': np.nan, 'jaccard': np.nan, 'f_score': np.nan, 'rmse_lat': np.nan,
+                     'rmse_ax': np.nan,
+                     'rmse_x': np.nan, 'rmse_y': np.nan, 'jor': np.nan, 'eff_lat': np.nan, 'eff_ax': np.nan,
+                     'eff_3d': np.nan}
+        return perf_dict, matches
     # filter prediction and gt according to limited_x;y
     t_inds = np.where(
         (truth_array[:, 2] < limited_x[0]) | (truth_array[:, 2] > limited_x[1]) |
