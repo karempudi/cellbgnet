@@ -113,6 +113,6 @@ Hardware:
 InOut:
   experiment_out: '/mnt/sda1/SMLAT/training_runs/'
   calibration_file: ''
-  filename: '/mnt/sda1/SMLAT/training_runs/model_rotated_45_venus_beads'
+  filename: '/mnt/sda1/SMLAT/training_runs/model_rotated_45_venus_beads2'
 Meta:
   version:
