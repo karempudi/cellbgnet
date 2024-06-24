@@ -1332,8 +1332,8 @@ def match_two_frames(truth_origin, pred_list_origin, min_int, limited_x=[0, 2048
         rmse_y = np.sqrt(((matches[:, 1] - matches[:, 5]) ** 2).mean())
         rmse_z = np.sqrt(((matches[:, 2] - matches[:, 6]) ** 2).mean())
         rmse_i = np.sqrt(((matches[:, 3] - matches[:, 7]) ** 2).mean())
-    else:
-        print('matches is empty!')
+    #else:
+    #    print('matches is empty!')
 
     if print_res:
         print('{}{:0.3f}'.format('Recall: ', recall))
