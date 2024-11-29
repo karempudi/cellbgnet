@@ -389,9 +389,8 @@ class DataSimulator(object):
 
     def simulate_noise(self, imgs_sim, field_xy, cells_bg_alpha=None,
                        cells_bg_beta = None, add_noise=True):
-        
-        if self.simulation_params['camera'] == 'sCMOS':
-
+                         
+        if self.simulation_params['camera'] == 'sCMOS' or self.simulation_params['camera'] == 'EMCCD':
             # generate background photons from cells using sampled technique
             if (cells_bg_alpha is not None)  and (cells_bg_beta is not None):
                 alpha_t = torch.from_numpy(cells_bg_alpha)
@@ -409,7 +408,11 @@ class DataSimulator(object):
                 bg_sampled_ADU = bg_sampled_ADU[:, None, None]
                 # batch_size, H, W
                 bg_sampled_ADU = torch.ones((imgs_sim.shape[0], imgs_sim.shape[2], imgs_sim.shape[3])) * bg_sampled_ADU
-                bg_photons = ((bg_sampled_ADU - self.simulation_params['baseline']) * self.simulation_params['e_per_adu']) / self.simulation_params['qe']
+                if self.simulation_params['camera'] == 'EMCCD' and self.simulation_params['em_gain'] is not None:
+                    EMgain = self.simulation_params['em_gain']
+                else:
+                    EMgain = 1
+                bg_photons = (((bg_sampled_ADU - self.simulation_params['baseline']) * self.simulation_params['e_per_adu']) / EMgain - self.simulation_params['spurious_c'])/ self.simulation_params['qe']
                 bg_photons = bg_photons[:, None] # batchsize, 1, H, W
                 bg_photons = torch.clamp(bg_photons, min=0.0)
 
@@ -450,22 +453,30 @@ class DataSimulator(object):
             if add_noise:
                 imgs_sim = torch.distributions.Poisson(
                     imgs_sim * self.simulation_params['qe']  + self.simulation_params['spurious_c']).sample()
-                
-                if type(self.RN) == np.ndarray:
-                    RN = gpu(self.RN[field_xy[2] : field_xy[3]+1, field_xy[0]: field_xy[1] + 1] + 1e-6)
-                    #print(f"Using read noise map for field: {field_xy}")
-                else:
-                    RN = self.RN
-
+                if self.simulation_params['camera'] == 'sCMOS':
+                    if type(self.RN) == np.ndarray:
+                        RN = gpu(self.RN[field_xy[2] : field_xy[3]+1, field_xy[0]: field_xy[1] + 1] + 1e-6)
+                        #print(f"Using read noise map for field: {field_xy}")
+                    else:
+                        RN = self.RN
+                elif self.simulation_params['camera'] == 'EMCCD':
+                    # EMCCD part
+                    if type(self.RN) == np.ndarray:
+                        raise ValueError('sig_read should be a value for EMCCD camera, not a matrix.')
+                    else:
+                        RN = self.RN
+                    if self.simulation_params['em_gain'] is not None:
+                        imgs_sim = torch.distributions.gamma.Gamma(imgs_sim, 1 / self.simulation_params['em_gain'], validate_args=False).sample()
+                        
+                        
                 zeros = torch.zeros_like(imgs_sim)
                 readout_noise = torch.distributions.Normal(zeros, zeros + RN).sample()
                 # add read out noise
                 imgs_sim = imgs_sim + readout_noise
                 # convert off the electrons into ADU's and then 
                 imgs_sim = torch.clamp((imgs_sim / self.simulation_params['e_per_adu']) + self.simulation_params['baseline'], min=0) 
-
         else:
-            print('Wrong camera type. Only sCMOS is implemented!!')
+            print('Wrong camera type. Only sCMOS and EMCCD is implemented!!')
 
         return imgs_sim
     
