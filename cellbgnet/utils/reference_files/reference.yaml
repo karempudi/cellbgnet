@@ -69,10 +69,10 @@ Train:
 
 
 PSF:
-  calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal_45_venus.mat'
+  calib_file: '/mnt/sda1/SMLAT/data/real_data/only_beads/EXP-24-CB4791/splines25nm/venus.mat'
   psf_size: 40 # kinda irrelevant for spline model psf
   photon_scale: 3000 # i guess max numbeor of photons
-  z_scale: 700 # what range of values you want to have z emitters in 
+  z_scale: 500 # what range of values you want to have z emitters in 
   pixel_size_xy:
     - 65
     - 65
@@ -113,6 +113,6 @@ Hardware:
 InOut:
   experiment_out: '/mnt/sda1/SMLAT/training_runs/'
   calibration_file: ''
-  filename: '/mnt/sda1/SMLAT/training_runs/model_rotated_45_venus_long_run_700_range'
+  filename: '/mnt/sda1/SMLAT/training_runs/model_rotated_45_venus25nm_dec12'
 Meta:
   version:

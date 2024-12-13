@@ -69,7 +69,7 @@ Train:
 
 
 PSF:
-  calib_file: '/mnt/sda1/SMLAT/data/KonradPSF/splines/bead_3dcal_45_cherry_oct17.mat'
+  calib_file: '/mnt/sda1/SMLAT/data/real_data/only_beads/EXP-24-CB4791/splines25nm/cherry.mat'
   psf_size: 40 # kinda irrelevant for spline model psf
   photon_scale: 7000 # i guess max numbeor of photons
   z_scale: 500 # what range of values you want to have z emitters in 
@@ -113,6 +113,6 @@ Hardware:
 InOut:
   experiment_out: '/mnt/sda1/SMLAT/training_runs/'
   calibration_file: ''
-  filename: '/mnt/sda1/SMLAT/training_runs/model_rotated_45_cherry_oct17_10k'
+  filename: '/mnt/sda1/SMLAT/training_runs/model_rotated_45_cherry25nm_dec12'
 Meta:
   version:
