@@ -209,7 +209,7 @@ def chromo_edt_mean_variance_inside(fluor_img, cellseg_mask, bg_cutoff_percentil
 
 def get_full_edt_maps(masks_dir, fluor_dir, save_filename=None,
                 mask_fileformat='.png', fluor_fileformat='.tiff',
-                roi=[170, 420, 720, 720], edt_min_max=[1, 7], bg_cutoff_percentile=75):
+                roi=[170, 350, 720, 720], edt_min_max=[1, 8], bg_cutoff_percentile=75, dilate=2):
     """
     Gets edt maps that you can save and reload them back later.
     
@@ -236,7 +236,7 @@ def get_full_edt_maps(masks_dir, fluor_dir, save_filename=None,
         edt_fit_pool_alphas[edt_val] = []
         edt_fit_pool_betas[edt_val] = []
     
-    for index in tqdm(range(len(mask_filenames))):
+    for index in tqdm(range(10, len(mask_filenames))):
         mask_img = imread(mask_filenames[index])
         fluor_img = imread(fluor_filenames[index])
         alpha_bg, beta_bg = chromo_mean_var_bg_outside(fluor_img, mask_img, 
@@ -246,7 +246,7 @@ def get_full_edt_maps(masks_dir, fluor_dir, save_filename=None,
         chip_bg_betas.append(beta_bg)
         try:
             edt_data = chromo_edt_mean_variance_inside(fluor_img, mask_img, plot=False, return_values=False,
-                                 bg_cutoff_percentile=bg_cutoff_percentile)
+                                 bg_cutoff_percentile=bg_cutoff_percentile, dilate_px=dilate)
             for edt_val in range(edt_min_max[0], edt_min_max[1]):
                 if edt_data['fits'][edt_val]['alpha'] != float('nan'):
                     edt_fit_pool_alphas[edt_val].append(edt_data['fits'][edt_val]['alpha'])

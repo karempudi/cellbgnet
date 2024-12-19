@@ -4,7 +4,7 @@ Simulation:
   train_size: 128 # size of the images network see
   train_type: 'cells' # or 'uniform'
   psf_intensity_normalization: True # false will try to generate all dots at the same time
-  density: 0.00625 # This should put 2 dots in avg cell area 320
+  density: 0.003125 # This should put 2 dots in avg cell area 320
   non_cell_density: 10 # when no cells are there, we use 10 dots per frame
   margin_empty: 0.05 # what percent of the image you want to leave empty on the image
   z_prior:
@@ -20,7 +20,7 @@ Simulation:
   perlin_noise_factor: 0.2 # what fraction of bg photons you want to multiply to get PN noise map
   perlin_noise_res: 64
   baseline: 103.0
-  bg_values: 273.0 # background value estimated from the data 
+  bg_values: 115.0 # background value estimated from the data 
   bg_width: 2 # in case of uniform background model, bg values are sampled from uniform dist [bg_values - bg_width, bg_value + bg_width]
   e_per_adu: 0.38 # e per adu of the camera
   qe: 0.95 # quantum efficiency
@@ -30,9 +30,9 @@ Simulation:
   sig_read: '/mnt/sda1/SMLAT/data/real_data/dark_images/RN_e_venus_upgraded.tiff'
   robust_training: False
 
-  cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/only_beads/EXP-24-CB4791/Run/pool_CB4791_pos76/phase_cherry_mask_dilated/'
+  cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/only_beads/EXP-24-CB4791/Run/pool_CB4791_pos76/phase_venus_mask_dilated/'
   cell_masks_filetype: '.png'
-  edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/only_beads/EXP-24-CB4791/Run/pool_CB4791_pos76/edt_noise_cherry.pkl'
+  edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/only_beads/EXP-24-CB4791/Run/pool_CB4791_pos76/edt_noise_venus.pkl'
   min_edt: 0
   max_edt: 7
   # testing cell rotation augmentation
@@ -48,15 +48,15 @@ Network:
   psf_pred: True
   local_context: False # This will just use 1 frame for context, always False for our use-case
   use_coordconv: True # Use if you want to add xy field on top # later add cell edt coordinate as well
-  factor: 300.0 # calculate these from data
-  offset: 273.0 # calculate these from data
+  factor: 130 # calculate these from data
+  offset: 112 # calculate these from data
 
 
 Train:
   lr: 0.0006
   w_decay: 0.1
   lr_decay: 0.9
-  step_size: 4000 # lr decay step size
+  step_size: 5000 # lr decay step size
   batch_size: 16
   max_iters: 50000
   print_output: True
@@ -69,9 +69,9 @@ Train:
 
 
 PSF:
-  calib_file: '/mnt/sda1/SMLAT/data/real_data/only_beads/EXP-24-CB4791/splines25nm/cherry.mat'
+  calib_file: '/mnt/sda1/SMLAT/data/real_data/only_beads/EXP-24-CB4791/splines25nm/venus.mat'
   psf_size: 40 # kinda irrelevant for spline model psf
-  photon_scale: 3000 # i guess max numbeor of photons
+  photon_scale: 2700 # i guess max numbeor of photons
   z_scale: 700 # what range of values you want to have z emitters in 
   pixel_size_xy:
     - 65
@@ -80,12 +80,12 @@ PSF:
 Evaluation:
   number_images: 30  # number of images, full camera chip is used
   use_cell_masks: True # if true masks will be chosen at random
-  density_in_cells: 0.00625 # 
+  density_in_cells: 0.003125 # 
   # masks directory used to sample number_cell_masks images
-  cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/only_beads/EXP-24-CB4791/Run/pool_CB4791_pos76/phase_cherry_mask_dilated/'
+  cell_masks_dir: '/mnt/sda1/SMLAT/data/real_data/only_beads/EXP-24-CB4791/Run/pool_CB4791_pos76/phase_venus_mask_dilated/'
   cell_masks_filetype: '.png'
   # pre-computed edt_noise map to generate distributions of bg photons
-  edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/only_beads/EXP-24-CB4791/Run/pool_CB4791_pos76/edt_noise_cherry.pkl'
+  edt_noise_map_path: '/mnt/sda1/SMLAT/data/real_data/only_beads/EXP-24-CB4791/Run/pool_CB4791_pos76/edt_noise_venus.pkl'
 
   eval_size: #xy, not rc, same as the camera_chip_size
     - 1041 # y
@@ -96,7 +96,7 @@ Evaluation:
   nms_threshold: 0.5
   print_result: False
   batch_size: 16
-  padded_background: 273.0 # we will get back to this padded value later
+  padded_background: 115.0 # we will get back to this padded value later
 
 
 
@@ -113,6 +113,6 @@ Hardware:
 InOut:
   experiment_out: '/mnt/sda1/SMLAT/training_runs/'
   calibration_file: ''
-  filename: '/mnt/sda1/SMLAT/training_runs/model_rotated_45_cherry25nm_dec18_700range_20k'
+  filename: '/mnt/sda1/SMLAT/training_runs/model_rotated_45_venus25nm_dec19_700range_10k'
 Meta:
   version:
